@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>Error-Filled Page</title>
+
+</head>
+<body>
+    <h1>Welcome to My Error-Filled Page</h1>
+    
+    <p>This is a paragraph with mismatched tags and missing closing tags.</p>
+    
+    <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+        <li>Item 4</li>
+        <li>Item 5</li>
+        <li>Item 6</li>
+        <li>Item 7</li>
+        <li>Item 8</li>
+        <li>Item 9</li>
+        <li>Item 10</li>
+    </ul>
+
+    <p>This is another paragraph without proper indentation. </p>
+    
+    <img src="image.jpg" alt = "Meme1">
+
+    <a href="https://www.example.com" target="_blank">Click me! </a>
+
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+        </tr>
+        <tr>
+            <td>John</td>
+            <td>25</td>
+        </tr>
+        <tr>
+            <td>Jane</td>
+            <td>30</td>
+        </tr>
+    </table>
+    
+    <img src="error.jpeg" alt="Error Image">
+
+    <p>This is centered text.</p>
+
+    <p> bgcolor="lightgray">Text</p>
+
+    <input type="button" value="Click me">
+
+    <!-- This is an unclosed comment -->
+
+    <a href="#">Link without closing tag</a>
+
+    <p><em>Underlined text</em></p>
+
+    <dl>
+        <dt>Descriptive Item Title</dt>
+        <dd>Descriptive Item Text</dd>
+    </dl>
+</body>
+</html>
+
+<!--
+Errors/Fixes:
+1. missing <!DOCTYPE html> to start: add <!DOCTYPE html> before line 1
+2. line 4 should be line two after an included <!DOCTYPE html>: it sould be on line two then and language should just be lang
+3. no closing head tag: line 7 needs </head>
+4. line 9 needed a closing </h1> tag
+5. line 11 needed an opening <p> tag
+6. line 13 changed from <ol> to <ul>
+7. line 26 needed a closing </p> tag
+8. line 28 needed an alt tag for the image: alt = "Meme1" was added
+9. line 30 had a closing </img> tag, however it was not an img and <img> is an empty tag, so it was deleted
+10. line 30 needed a closing </a> tag
+11. line 39 closed with an opening <td> tag so a closing </td> was added in its place
+12. line 45 needed a closing </table> tag
+13. line 47 had source and needed to be changed to src
+14. line 49 has an opening center and closing center tag which are obsolete elements without CSS, so they were deleted and replaced with <p></p> tags as placeholders
+15. line 51 opened with a <p so an > was added to close that tag
+16. line 55 was an unclosed comment, so -- > was added to close it (the space here (-- >) is just so my comment does not close; in the code there is no space)
+17. line 57 was missing a closing </a> tag
+18. line 59 had the </em> improperly nested, so it was switched inside the closing </p> tag
+19. line 62 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dt> and </dt> tags respectively
+20. line 63 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dd> and </dd> tags respectively
+-->
