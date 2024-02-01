@@ -85,6 +85,9 @@ Errors/Fixes:
 16. line 55 was an unclosed comment, so -- > was added to close it (the space here (-- >) is just so my comment does not close; in the code there is no space)
 17. line 57 was missing a closing </a> tag
 18. line 59 had the </em> improperly nested, so it was switched inside the closing </p> tag
-19. line 62 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dt> and </dt> tags respectively
-20. line 63 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dd> and </dd> tags respectively
+19. line 59 alsouses <em> </em> for supposed underlined text, which should actually be <u> </u>
+20. line 62 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dt> and </dt> tags respectively
+21. line 63 used <li> </li> tags nested within a <dl> </dl> tags, which is not allowed. They were replaced with <dd> and </dd> tags respectively
+
+please note: I believe the center tags were not meant to be an error, rather correct syntax given a CSS file, so I have 21 errors listed.
 -->
