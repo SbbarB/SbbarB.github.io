@@ -12,9 +12,7 @@ body{
     position: relative;
 
 }
-.birds article{
 
-}
 .birds h1{
     margin: auto;
     background: linear-gradient(to left, rgba(0,0,0,.5) 15%, rgba(0,0,0,0) 50%, rgba(0,0,0,.7)) 15%, url(Elogo.jpg) no-repeat left, url(Blogo.jpg) no-repeat right;
@@ -35,7 +33,7 @@ body{
     color: rgb(231, 66, 66);
     font-size: 15px;
     border: white;
-    padding: 5px;
+    padding: 15px;
     position: absolute;
-    top: 0%;
+    top: 0;
 }
