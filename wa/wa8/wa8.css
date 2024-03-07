@@ -24,8 +24,8 @@ nav a{
 
 
 img{
-    width:30vw;
-    height: 30vh;
+    width:315px;
+    height: auto;
     transition: width 2s, height 2s, background-color 2s, rotate 2s;
 }
 
@@ -55,7 +55,7 @@ img:hover{
     }
     14%{
         margin-top: 375px;
-        margin-left: 775px;
+        margin-left: 1000px;
     }
     25%{
         margin-top: 600px;
@@ -63,7 +63,7 @@ img:hover{
     }
     45%{
         margin-top: 800px;
-        margin-left: 1000px;
+        margin-left: 1500px;
     }
     75%{
         margin-top: 100px;
