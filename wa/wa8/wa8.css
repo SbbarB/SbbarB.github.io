@@ -25,7 +25,7 @@ nav a{
 
 img{
     width:315px;
-    height: auto;
+    height: 315px;
     transition: width 2s, height 2s, background-color 2s, rotate 2s;
 }
 
