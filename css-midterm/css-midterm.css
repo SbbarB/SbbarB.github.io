@@ -1,0 +1,266 @@
+body{
+    background-color:darkslategray;
+    font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+}
+
+#head h1{
+    position: sticky;
+    top: -1px;
+    font-size: 70px;
+    background-color:white;
+    color: darkslategray;
+    text-align: center;
+}
+
+#head h1 p{
+    font-size: 20px;
+    color: darkslategray;
+    padding-bottom: 3px;
+}
+
+#head h2{
+    font-size: 20px;
+    margin-left: 75px;
+    margin-right: 75px;
+    color:lightblue ;
+    text-align: center;
+}
+
+#main{
+    text-align: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
+}
+
+#main h2{
+    font-size: 22px;
+    color:lightpink
+}
+
+#main p{
+    font-size: 16px;
+    color:lightblue
+}
+
+#no1{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no1:hover{
+    background-color: black;
+}
+
+#no2{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no2:hover{
+    background-color: black;
+}
+
+#no3{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no3:hover{
+    background-color: black;
+}
+
+#no4{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no4:hover{
+    background-color: black;
+}
+
+#no5{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no5:hover{
+    background-color: black;
+}
+
+#no6{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no6:hover{
+    background-color: black;
+}
+
+#no7{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no7:hover{
+    background-color: black;
+}
+
+#no8{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no8:hover{
+    background-color: black;
+}
+
+#no9{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no9:hover{
+    background-color: black;
+}
+
+#no0{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no0:hover{
+    background-color: black;
+}
+
+#no11{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no11:hover{
+    background-color: black;
+}
+
+#no12{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no12:hover{
+    background-color: black;
+}
+
+#no13{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no13:hover{
+    background-color: black;
+}
+
+#no14{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no14:hover{
+    background-color: black;
+}
+
+#no15{
+    border: 5px dashed black;
+    padding: 6px 5px 0px 5px;
+    margin: 3px;
+}
+
+#no15:hover{
+    background-color: black;
+}
+
+#stuff{
+    color: darkslategray;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    text-align: center;
+    font-size: 22px;
+    margin-bottom: 100px;
+}
+
+#stuff p{
+    font-size: 16px;
+}
+
+#b1{
+    background-color: lightpink;
+    padding-top: 30px;
+}
+
+#b2{
+    background-color: black;
+    padding: 30px;
+}
+
+#b3{
+    background-color: lightblue;
+    padding: 30px;
+}
+
+#moon {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    box-shadow: 20px 20px 0 0 black;
+    transition: rotate 3s;
+
+}
+
+#moon:hover{
+    rotate: 720deg;
+}
+
+#no16{
+    text-align: center;
+    color: white;
+    font-size: 30px;
+}
+
+#no17{
+    text-align: right;
+    padding-right: 15px;
+    font-size: 15px;
+}
+
+@media screen and (max-width: 646px) {
+    #main{
+        text-align: center;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    }
+
+    #stuff{
+        color: darkslategray;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        text-align: center;
+        font-size: 22px;
+        margin-bottom: 100px;
+    }
+}
