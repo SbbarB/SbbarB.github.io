@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AR Golf — Multiplayer 3D Prototype (YOLO + Hand Tracking)</title>
+<style>
+  :root { --gold: #FFD700; --muted: #9E9E9E; }
+  body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; background:#050507; color:#fff; overflow:hidden; }
+  #gameContainer { position:relative; width:100vw; height:100vh; background:#000; }
+  video#cam { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); z-index:1; }
+  canvas#uiCanvas, canvas#drawCanvas { position:absolute; inset:0; width:100%; height:100%; z-index:5; pointer-events:none; }
+  #panel { position:absolute; left:16px; top:16px; z-index:20; background:rgba(0,0,0,0.45); padding:12px; border-radius:12px; backdrop-filter: blur(6px); min-width:300px }
+  #panel h3 { margin:0 0 8px 0; color:var(--gold); }
+  #playersList { max-height:200px; overflow:auto; margin-bottom:6px; }
+  .playerRow { padding:8px; border-radius:8px; background: rgba(255,255,255,0.03); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+  .playerRow.active { border-left:4px solid var(--gold); background: linear-gradient(90deg, rgba(255,215,0,0.04), transparent); }
+  .small { font-size:12px; color:#ddd; opacity:0.9; }
+  #controls { margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+  button { background:linear-gradient(45deg,#4CAF50,#8BC34A); border:none; color:white; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600; }
+  button.secondary { background:linear-gradient(45deg,#2196F3,#42A5F5); }
+  button:disabled { background:#444; cursor:not-allowed; }
+  #scoreboard { position:absolute; right:16px; top:16px; z-index:20; background:rgba(0,0,0,0.45); padding:12px; border-radius:12px; min-width:220px; }
+  #scoreboard h4 { color:var(--gold); margin:0 0 6px 0; }
+  #celebrate { position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); font-size:48px; color:var(--gold); text-shadow:3px 3px 10px rgba(0,0,0,.7); z-index:30; display:none; }
+  .hand-dot { position:absolute; width:18px; height:18px; border-radius:50%; background: radial-gradient(circle,#FF6B6B,#FF8E8E); border:2px solid white; z-index:25; transform:translate(-50%,-50%); pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <video id="cam" autoplay muted playsinline></video>
+  <canvas id="drawCanvas"></canvas>   <!-- draws boxes, labels, balls/hole -->
+  <canvas id="uiCanvas"></canvas>     <!-- aim arrows, HUD -->
+  <div id="panel">
+    <h3>AR Mini Golf — Multiplayer 3D</h3>
+    <div id="info" class="small">Initializing… allow camera & GPU access</div>
+    <div id="playersList"></div>
+    <div id="controls">
+      <button id="btnScan">Start Scan</button>
+      <button id="btnStartGame" disabled>Start Game</button>
+      <button id="btnNextHole" disabled class="secondary">Next Hole</button>
+      <button id="btnRescan" class="secondary">Rescan</button>
+    </div>
+    <div style="margin-top:8px" class="small" id="holeInfo">Hole: 0 / Par: —</div>
+  </div>
+
+  <div id="scoreboard">
+    <h4>Leaderboard</h4>
+    <div id="leaderRows" class="small"></div>
+  </div>
+
+  <div id="celebrate">🎉 Hole in!</div>
+</div>
+
+<!-- ONNX runtime -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+<!-- MediaPipe Tasks Vision -->
+<script type="module">
+  import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
+
+  // -------------------------
+  // Config & Constants
+  // -------------------------
+  const MODEL_URL = 'https://huggingface.co/Xenova/yolov8n/resolve/main/onnx/model.onnx'; // yolov8n (example)
+  const MODEL_SIZE = 640; // input square size for model
+  const COCO_CLASSES = [ 'person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush' ];
+
+  // physics constants tuned for screen-space prototype
+  const GRAVITY = -0.6;      // acts on z (negative pulls to ground)
+  const FLOOR_Z = 0;         // z of the floor
+  const FRICTION = 0.96;
+  const TIMESTEP = 1/60;
+
+  // -------------------------
+  // State
+  // -------------------------
+  const state = {
+    yoloSession: null,
+    yoloReady: false,
+    simulateYOLO: false,
+    handLandmarker: null,
+    players: [], // {id,name,ball:{x,y,z,vx,vy,vz},holeStrokes:[],totalStrokes,finished}
+    detections: [], // YOLO raw detections {class,conf,bbox}
+    tee: null, // {x,y,z}
+    hole: null, // {x,y,z}
+    obstacles: [], // {bbox:[x,y,w,h], zEstimate, depthSizeEstimate}
+    currentHole: 1,
+    maxHoles: 9,
+    par: Array.from({length:9},()=>3+Math.floor(Math.random()*3)),
+    running: false,
+    scanning: false,
+    currentPlayerIndex: 0,
+  };
+
+  // DOM
+  const cam = document.getElementById('cam');
+  const drawCanvas = document.getElementById('drawCanvas');
+  const uiCanvas = document.getElementById('uiCanvas');
+  const dctx = drawCanvas.getContext('2d');
+  const uctx = uiCanvas.getContext('2d');
+
+  const btnScan = document.getElementById('btnScan');
+  const btnStartGame = document.getElementById('btnStartGame');
+  const btnNextHole = document.getElementById('btnNextHole');
+  const btnRescan = document.getElementById('btnRescan');
+
+  const infoEl = document.getElementById('info');
+  const playersList = document.getElementById('playersList');
+  const leaderRows = document.getElementById('leaderRows');
+  const holeInfo = document.getElementById('holeInfo');
+  const celebrateEl = document.getElementById('celebrate');
+
+  // hand indicator nodes (so they persist in DOM)
+  const handNodes = [];
+
+  // resize canvases to viewport
+  function resizeAll(){
+    const w = window.innerWidth, h = window.innerHeight;
+    drawCanvas.width = w; drawCanvas.height = h;
+    uiCanvas.width = w; uiCanvas.height = h;
+  }
+  window.addEventListener('resize', resizeAll);
+
+  // -------------------------
+  // Camera
+  // -------------------------
+  async function startCamera(){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      cam.srcObject = stream;
+      await cam.play();
+      resizeAll();
+      infoEl.textContent = 'Camera ready';
+      return true;
+    }catch(err){
+      console.error('camera error', err);
+      infoEl.textContent = 'Camera failed: ' + err.message;
+      return false;
+    }
+  }
+
+  // -------------------------
+  // YOLO: load & infer
+  // -------------------------
+  async function initYOLO(){
+    try{
+      state.yoloSession = await ort.InferenceSession.create(MODEL_URL);
+      state.yoloReady = true;
+      state.simulateYOLO = false;
+      infoEl.textContent = 'YOLO model loaded';
+    }catch(err){
+      console.warn('YOLO load failed, using simulator', err);
+      state.yoloSession = null;
+      state.yoloReady = true;
+      state.simulateYOLO = true;
+      infoEl.textContent = 'YOLO simulate mode';
+    }
+  }
+
+  // helper: preprocess video frame to Float32 CHW tensor for model input
+  function preprocessVideoToTensor(size){
+    // draw a square crop of the video to hidden canvas
+    const tmp = document.createElement('canvas');
+    tmp.width = size; tmp.height = size;
+    const tctx = tmp.getContext('2d');
+
+    const vw = cam.videoWidth, vh = cam.videoHeight;
+    if(!vw || !vh) return null;
+    // center-crop to square
+    const minSide = Math.min(vw, vh);
+    const sx = (vw - minSide) / 2;
+    const sy = (vh - minSide) / 2;
+    tctx.drawImage(cam, sx, sy, minSide, minSide, 0, 0, size, size);
+    const img = tctx.getImageData(0,0,size,size).data;
+    // convert to CHW float32 normalized 0-1
+    const float32 = new Float32Array(1 * 3 * size * size);
+    let pos = 0;
+    for(let c=0;c<3;c++){
+      for(let y=0;y<size;y++){
+        for(let x=0;x<size;x++){
+          const idx = (y*size + x) * 4;
+          const val = img[idx + c] / 255.0;
+          float32[pos++] = val;
+        }
+      }
+    }
+    return float32;
+  }
+
+  // NMS helper (simple)
+  function boxIoU(a,b){
+    const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+    const x2 = Math.min(a[2], b[2]), y2 = Math.min(a[3], b[3]);
+    const w = Math.max(0, x2 - x1), h = Math.max(0, y2 - y1);
+    const inter = w*h;
+    const areaA = Math.max(0, a[2]-a[0]) * Math.max(0, a[3]-a[1]);
+    const areaB = Math.max(0, b[2]-b[0]) * Math.max(0, b[3]-b[1]);
+    return inter / (areaA + areaB - inter + 1e-6);
+  }
+  function nms(boxes, scores, thresh=0.45){
+    const idxs = scores.map((s,i)=>i).sort((a,b)=>scores[b]-scores[a]);
+    const keep = [];
+    while(idxs.length){
+      const i = idxs.shift();
+      keep.push(i);
+      for(let j=idxs.length-1;j>=0;j--){
+        const k = idxs[j];
+        if(boxIoU(boxes[i], boxes[k]) > thresh) idxs.splice(j,1);
+      }
+    }
+    return keep;
+  }
+
+  // Decode typical YOLOv8 ONNX single output [N,85] rows (x,y,w,h,obj,classes...)
+  function decodeYoloOutput(flatArr, modelSize){
+    const W = window.innerWidth, H = window.innerHeight;
+    // common row length 85 (1 obj + 80 classes + 4 bbox = 85) but be robust
+    const rowLenCandidate = 85;
+    const per = rowLenCandidate;
+    const detections = [];
+    for(let i=0;i<flatArr.length;i+=per){
+      if(i+4 >= flatArr.length) break;
+      const x = flatArr[i], y = flatArr[i+1], w = flatArr[i+2], h = flatArr[i+3];
+      const obj = flatArr[i+4];
+      // find best class
+      let bestC = -1, bestScore = 0;
+      for(let c=5;c<per;c++){
+        const s = flatArr[i+c];
+        if(s > bestScore){ bestScore = s; bestC = c-5; }
+      }
+      const score = obj * bestScore;
+      if(score < 0.25) continue;
+      // convert to screen coords (we used center-crop preprocessing)
+      const cx = (x / modelSize) * W;
+      const cy = (y / modelSize) * H;
+      const bw = (w / modelSize) * W;
+      const bh = (h / modelSize) * H;
+      const left = cx - bw/2, top = cy - bh/2;
+      detections.push({ classId: bestC, className: COCO_CLASSES[bestC] || ('cls'+bestC), confidence: score, bbox:[left, top, bw, bh] });
+    }
+    // apply NMS
+    const boxes = detections.map(d => {
+      const [l,t,w,h] = d.bbox; return [l,t,l+w,t+h];
+    });
+    const scores = detections.map(d => d.confidence);
+    const keep = nms(boxes, scores, 0.45);
+    return keep.map(i => detections[i]);
+  }
+
+  // Run model or simulator
+  async function runYoloFrame(){
+    if(state.simulateYOLO){
+      return simulateDetections();
+    }
+    if(!state.yoloSession) return simulateDetections();
+    try{
+      const floatData = preprocessVideoToTensor(MODEL_SIZE);
+      if(!floatData) return [];
+      const inputTensor = new ort.Tensor('float32', floatData, [1,3,MODEL_SIZE,MODEL_SIZE]);
+      const feeds = {}; feeds[state.yoloSession.inputNames[0]] = inputTensor;
+      const outputMap = await state.yoloSession.run(feeds);
+      const firstKey = Object.keys(outputMap)[0];
+      const out = outputMap[firstKey];
+      const outData = out.data; // Float32Array
+      const dets = decodeYoloOutput(outData, MODEL_SIZE);
+      return dets;
+    }catch(err){
+      console.error('YOLO inference error', err);
+      state.simulateYOLO = true;
+      return simulateDetections();
+    }
+  }
+
+  // -------------------------
+  // Simulator detections (fallback)
+  // -------------------------
+  function simulateDetections(){
+    const W = window.innerWidth, H = window.innerHeight;
+    const mk = (x,y,w,h) => [Math.max(8,Math.min(W-80,x + (Math.random()-0.5)*40)), Math.max(8,Math.min(H-120,y + (Math.random()-0.5)*40)), w, h];
+    return [
+      { className:'person', confidence:0.95, bbox: mk(120,120,150,320) },
+      { className:'person', confidence:0.92, bbox: mk(520,140,130,300) },
+      { className:'chair', confidence:0.88, bbox: mk(300,380,160,120) },
+      { className:'table', confidence:0.84, bbox: mk(720,210,220,100) },
+      { className:'couch', confidence:0.80, bbox: mk(40,420,300,140) }
+    ];
+  }
+
+  // -------------------------
+  // Map 2D detections to approximate 3D positions
+  // We approximate depth (z) inversely proportional to bbox height: taller box -> nearer -> smaller z
+  // and map x,y screen positions directly.
+  // -------------------------
+  function mapDetectionsTo3D(dets){
+    const mapped = [];
+    for(const d of dets){
+      const [l,t,w,h] = d.bbox;
+      const cx = l + w/2, cy = t + h/2;
+      // estimate depth: normalize bbox height to screen and invert
+      const normalizedHeight = Math.min(1, h / window.innerHeight); // [0..1], larger => closer
+      // Map to a rough z in meters (prototype): near ~0.3m, far ~3.5m
+      const z = 3.5 - (normalizedHeight * 3.2);
+      mapped.push({ className: d.className, confidence: d.confidence, bbox:[l,t,w,h], cx, cy, zEstimate: z, heightNormalized: normalizedHeight });
+    }
+    return mapped;
+  }
+
+  // Create tee & hole automatically from detections: pick two non-person objects farthest apart; if none, use corners
+  function pickTeeAndHoleFromScene(mapped){
+    const objs = mapped.filter(m => m.className !== 'person');
+    if(objs.length >= 2){
+      let best=[0,1], bestD=-1;
+      for(let i=0;i<objs.length;i++){
+        for(let j=i+1;j<objs.length;j++){
+          const dx = objs[i].cx - objs[j].cx, dy = objs[i].cy - objs[j].cy, d = dx*dx + dy*dy;
+          if(d > bestD){ bestD = d; best=[i,j]; }
+        }
+      }
+      const A = objs[best[0]], B = objs[best[1]];
+      // tee = lower on screen (bigger cy), hole = higher on screen
+      if(A.cy > B.cy){
+        state.tee = { x:A.cx, y:A.cy, z:A.zEstimate };
+        state.hole = { x:B.cx, y:B.cy, z:B.zEstimate };
+      }else{
+        state.tee = { x:B.cx, y:B.cy, z:B.zEstimate };
+        state.hole = { x:A.cx, y:A.cy, z:A.zEstimate };
+      }
+    }else{
+      // fallback: near bottom-left and top-right
+      state.tee = { x: Math.max(80, window.innerWidth * 0.2), y: window.innerHeight * 0.85, z: 1.2 };
+      state.hole = { x: window.innerWidth * 0.8, y: window.innerHeight * 0.2, z: 1.2 };
+    }
+  }
+
+  // Build obstacles with estimated z extents from bbox sizes (approximate vertical volume)
+  function buildObstaclesFromMapped(mapped){
+    const obstacles = [];
+    for(const m of mapped){
+      if(m.className === 'person') continue;
+      // estimate physical height (higher normalized height => closer => larger object)
+      // We'll set a vertical height in "meters" proportional to the normalized box height
+      const heightMeters = 0.4 + (1 - m.heightNormalized) * 2.5; // prototype mapping
+      obstacles.push({
+        bbox: m.bbox.slice(), // [l,t,w,h]
+        cx: m.cx, cy: m.cy,
+        z: m.zEstimate,
+        heightMeters
+      });
+    }
+    state.obstacles = obstacles;
+  }
+
+  // -------------------------
+  // Players from person detections
+  // -------------------------
+  function buildPlayersFromMapped(mapped){
+    const people = mapped.filter(m => m.className === 'person');
+    state.players = people.map((p,i) => ({
+      id: i,
+      name: `Player ${i+1}`,
+      ball: { x: state.tee.x, y: state.tee.y, z: state.tee.z, vx:0, vy:0, vz:0 },
+      holeStrokes: Array(state.maxHoles).fill(0),
+      totalStrokes: 0,
+      finished: false
+    }));
+    if(state.players.length === 0){
+      // fallback: create one default player
+      state.players = [{
+        id:0, name:'Player 1',
+        ball: { x: state.tee.x, y: state.tee.y, z: state.tee.z, vx:0, vy:0, vz:0 },
+        holeStrokes: Array(state.maxHoles).fill(0),
+        totalStrokes: 0, finished:false
+      }];
+    }
+    state.currentPlayerIndex = 0;
+  }
+
+  // -------------------------
+  // Rendering: draw boxes, balls, hole, obstacles
+  // -------------------------
+  function clearDraw(){
+    dctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+    uctx.clearRect(0,0,uiCanvas.width,uiCanvas.height);
+  }
+
+  function drawDetections(mapped){
+    for(const m of mapped){
+      const [l,t,w,h] = m.bbox;
+      dctx.lineWidth = 3;
+      dctx.strokeStyle = (m.className === 'person') ? '#FF7043' : '#9E9E9E';
+      dctx.strokeRect(l, t, w, h);
+      dctx.fillStyle = 'rgba(0,0,0,0.6)';
+      dctx.fillRect(l, t-22, Math.min(200, w), 20);
+      dctx.fillStyle = '#fff';
+      dctx.font = '13px Arial';
+      dctx.fillText(`${m.className} ${(m.confidence*100||0).toFixed(0)}%`, l+6, t-8);
+    }
+  }
+
+  // project 3D (x,y,z) to 2D: here x,y are already screen-space; we use z only for scale & vertical offset
+  function project(pos){
+    // simple projection: smaller z (nearer) = slightly larger scale
+    const scale = 1 + (1.6 - Math.min(1.6, Math.max(0.2, (3.5 - pos.z) / 3.5)));
+    return { sx: pos.x, sy: pos.y - (pos.z * 12), s: scale };
+  }
+
+  function drawHole(){
+    if(!state.hole) return;
+    const p = project(state.hole);
+    dctx.save();
+    dctx.translate(p.sx, p.sy);
+    dctx.scale(p.s, p.s);
+    // a hole circle
+    dctx.beginPath();
+    dctx.fillStyle = '#000';
+    dctx.strokeStyle = 'gold';
+    dctx.lineWidth = 3;
+    dctx.arc(0,0,18,0,Math.PI*2);
+    dctx.fill();
+    dctx.stroke();
+    // small flag
+    dctx.fillStyle = '#D32F2F';
+    dctx.fillRect(14,-28,22,12);
+    dctx.restore();
+  }
+
+  function drawBalls(){
+    state.players.forEach((pl, idx) => {
+      const p = project(pl.ball);
+      dctx.save();
+      dctx.translate(p.sx, p.sy);
+      dctx.scale(p.s, p.s);
+      dctx.beginPath();
+      dctx.fillStyle = (idx === state.currentPlayerIndex) ? '#fff' : 'rgba(255,255,255,0.6)';
+      dctx.arc(0,0,10,0,Math.PI*2);
+      dctx.fill();
+      dctx.strokeStyle = '#333';
+      dctx.lineWidth = 2;
+      dctx.stroke();
+      dctx.restore();
+    });
+  }
+
+  function drawObstacles(){
+    for(const obs of state.obstacles){
+      const [l,t,w,h] = obs.bbox;
+      dctx.save();
+      dctx.globalAlpha = 0.85;
+      dctx.fillStyle = 'rgba(60,60,60,0.35)';
+      dctx.fillRect(l, t, w, h);
+      dctx.strokeStyle = '#777';
+      dctx.lineWidth = 2;
+      dctx.strokeRect(l,t,w,h);
+      dctx.restore();
+    }
+  }
+
+  // UI: players list and leaderboard
+  function updateUI(){
+    // players
+    playersList.innerHTML = '';
+    state.players.forEach((p,i) => {
+      const row = document.createElement('div');
+      row.className = 'playerRow' + (i === state.currentPlayerIndex ? ' active' : '');
+      row.innerHTML = `<div>${p.name} ${p.finished ? '✅' : ''}</div><div>${p.holeStrokes[state.currentHole - 1]} | ${p.totalStrokes}</div>`;
+      playersList.appendChild(row);
+    });
+    // leaderboard
+    const sorted = [...state.players].sort((a,b)=>a.totalStrokes - b.totalStrokes);
+    leaderRows.innerHTML = '';
+    sorted.forEach((p,idx) => {
+      const el = document.createElement('div');
+      el.textContent = `${idx+1}. ${p.name} — ${p.totalStrokes}`;
+      leaderRows.appendChild(el);
+    });
+    holeInfo.textContent = `Hole ${state.currentHole} / Par ${state.par[state.currentHole - 1]}`;
+  }
+
+  // -------------------------
+  // Physics update (3D)
+  // -------------------------
+  function stepPhysics(dt){
+    for(const p of state.players){
+      const b = p.ball;
+      // integrate velocities
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.z += b.vz * dt;
+      // gravity downward on z (we want ball to fall to floor)
+      b.vz += GRAVITY * dt;
+      // simple ground collision
+      if(b.z <= FLOOR_Z){
+        b.z = FLOOR_Z;
+        b.vz = -b.vz * 0.3; // bounce
+        // apply friction when on ground
+        b.vx *= FRICTION;
+        b.vy *= FRICTION;
+        if(Math.abs(b.vz) < 0.8) b.vz = 0;
+      }
+      // obstacle collisions: treat obstacles as vertical boxes with a center z and heightMeters
+      for(const obs of state.obstacles){
+        const [ox,oy,ow,oh] = obs.bbox;
+        if(b.x > ox && b.x < ox + ow && b.y > oy && b.y < oy + oh){
+          // approximate obstacle "floor height" at obs.z (if ball's z is low)
+          const obsTop = obs.z; // approximate
+          // if ball at or below "top" of obstacle (z small), bump ball out
+          if(b.z <= obsTop + 0.3){
+            // simple push back along velocity
+            b.vx = -b.vx * 0.6;
+            b.vy = -b.vy * 0.6;
+            // push ball out of obstacle rectangle minimally
+            if(b.x - (ox + ow/2) < 0) b.x = ox - 6; else b.x = ox + ow + 6;
+            if(b.y - (oy + oh/2) < 0) b.y = oy - 6; else b.y = oy + oh + 6;
+          }
+        }
+      }
+      // limit speeds
+      b.vx *= 0.999;
+      b.vy *= 0.999;
+    }
+  }
+
+  // check for hole completion in 3D
+  function checkHoleIn(){
+    const hole = state.hole;
+    let changed = false;
+    state.players.forEach(p => {
+      if(p.finished) return;
+      const dx = p.ball.x - hole.x, dy = p.ball.y - hole.y, dz = Math.abs(p.ball.z - hole.z);
+      const d2 = dx*dx + dy*dy + dz*dz;
+      if(Math.sqrt(d2) < 28){ // threshold in px/meters combined approx
+        p.finished = true;
+        changed = true;
+        celebrateOnce();
+      }
+    });
+    if(changed) {
+      updateUI();
+      // if all players finished -> finish hole
+      if(state.players.every(pl => pl.finished)){
+        // enable Next Hole
+        btnNextHole.disabled = false;
+        btnNextHole.style.display = 'inline-block';
+        infoEl.textContent = `Hole ${state.currentHole} complete. Click Next Hole to proceed.`;
+      }
+    }
+  }
+
+  // prevent repeated celebrate visuals
+  let lastCelebrateAt = 0;
+  function celebrateOnce(){
+    const now = Date.now();
+    if(now - lastCelebrateAt < 1500) return;
+    lastCelebrateAt = now;
+    celebrateEl.style.display = 'block';
+    setTimeout(()=> celebrateEl.style.display = 'none', 1600);
+  }
+
+  // -------------------------
+  // Hand tracking & interaction (push ball)
+  // -------------------------
+  async function initHands(){
+    try{
+      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm');
+      state.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate: 'GPU'
+        },
+        runningMode: 'VIDEO',
+        numHands: 2
+      });
+      infoEl.textContent = 'Hand tracking ready';
+    }catch(err){
+      console.warn('hand init failed', err);
+      state.handLandmarker = null;
+      infoEl.textContent = 'Hand tracking not available';
+    }
+  }
+
+  function clearHandNodes(){
+    document.querySelectorAll('.hand-dot').forEach(n => n.remove());
+  }
+
+  function processHands(){
+    if(!state.handLandmarker) return;
+    try{
+      const results = state.handLandmarker.detectForVideo(cam, performance.now());
+      clearHandNodes();
+      if(!results || !results.landmarks) return;
+      for(const lm of results.landmarks){
+        const tip = lm[8];
+        const hx = tip.x * window.innerWidth;
+        const hy = tip.y * window.innerHeight;
+        showHandDot(hx, hy);
+        attemptPushAt(hx, hy);
+      }
+    }catch(err){
+      console.error('hand detect error', err);
+    }
+  }
+
+  function showHandDot(x,y){
+    const d = document.createElement('div');
+    d.className = 'hand-dot';
+    d.style.left = x + 'px';
+    d.style.top = y + 'px';
+    document.body.appendChild(d);
+    setTimeout(()=> d.remove(), 900);
+  }
+
+  // Push the current player's ball if hand near ball; compute push vector from hand movement speed approximated via short buffer
+  const handBuffer = [];
+  function attemptPushAt(hx, hy){
+    if(!state.running) return;
+    const p = state.players[state.currentPlayerIndex];
+    if(!p || p.finished) return;
+    const b = p.ball;
+    const dx = b.x - hx, dy = b.y - hy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if(dist > 80) return; // too far to push
+    // track hand buffer (last few positions)
+    handBuffer.push({x:hx,y:hy, t:Date.now()});
+    while(handBuffer.length > 6) handBuffer.shift();
+    if(handBuffer.length >= 2){
+      const a = handBuffer[0], z = handBuffer[handBuffer.length-1];
+      const dt = (z.t - a.t)/1000;
+      if(dt <= 0) return;
+      const vx = (z.x - a.x)/dt;
+      const vy = (z.y - a.y)/dt;
+      // derive push strength from hand speed into ball
+      // push direction = normalized(ball - hand)
+      const dirX = dx / (dist||1); const dirY = dy / (dist||1);
+      // strength: project hand velocity onto direction away from hand to ball
+      const speedAlong = ( -vx * dirX + -vy * dirY ); // negative because hand moving toward ball yields positive
+      if(speedAlong > 200){ // threshold
+        // apply push (scale to physics)
+        const push = Math.min(1200, speedAlong * 0.02);
+        p.ball.vx += dirX * push * 0.02;
+        p.ball.vy += dirY * push * 0.02;
+        // small upward component
+        p.ball.vz += 6 * Math.min(1, push/60);
+        // record stroke
+        p.holeStrokes[state.currentHole - 1] += 1;
+        p.totalStrokes += 1;
+        updateUI();
+        infoEl.textContent = `${p.name} hit the ball!`;
+      }
+    }
+  }
+
+  // -------------------------
+  // Full scan flow
+  // -------------------------
+  async function scanScene(){
+    if(state.scanning) return;
+    state.scanning = true;
+    infoEl.textContent = 'Scanning room (taking several frames)…';
+    btnScan.disabled = true;
+    // run a few detection frames and average or take best set
+    let accum = [];
+    for(let i=0;i<6;i++){
+      const dets = await runYoloFrame();
+      accum = dets; // basic: take last stable result; more advanced: merge multiple frames
+      await new Promise(r=>setTimeout(r, 220));
+    }
+    // map to 3D
+    const mapped = mapDetectionsTo3D(accum);
+    state.detections = mapped;
+    pickTeeAndHoleFromScene(mapped);
+    buildObstaclesFromMapped(mapped);
+    buildPlayersFromMapped(mapped);
+    // draw once
+    clearDraw();
+    drawDetections(mapped);
+    drawObstacles();
+    drawHole();
+    renderScene();
+    updateUI();
+    infoEl.textContent = `Scan complete: ${state.players.length} players, ${state.obstacles.length} obstacles.`;
+    btnStartGame.disabled = false;
+    state.scanning = false;
+    btnScan.disabled = false;
+  }
+
+  // -------------------------
+  // Game start / next hole
+  // -------------------------
+  function startGame(){
+    state.running = true;
+    btnStartGame.disabled = true;
+    btnScan.disabled = true;
+    btnRescan.disabled = true;
+    btnNextHole.disabled = true;
+    btnNextHole.style.display = 'none';
+    // position all players' balls at tee
+    state.players.forEach(pl => {
+      pl.ball.x = state.tee.x; pl.ball.y = state.tee.y; pl.ball.z = state.tee.z;
+      pl.ball.vx = pl.ball.vy = pl.ball.vz = 0;
+      pl.finished = false;
+      pl.holeStrokes = Array(state.maxHoles).fill(0);
+      pl.totalStrokes = 0;
+    });
+    state.currentHole = 1;
+    updateUI();
+    infoEl.textContent = `Game started — ${state.players[state.currentPlayerIndex].name} to play`;
+  }
+
+  function nextHole(){
+    // increment hole index, reset status, reposition tee/hole & balls
+    state.currentHole++;
+    if(state.currentHole > state.maxHoles){
+      endGame();
+      return;
+    }
+    // choose new tee/hole (for now we reuse scene and slightly randomize positions avoiding obstacles)
+    pickTeeAndHoleFromScene(state.detections);
+    // reposition balls
+    state.players.forEach(pl => {
+      pl.ball.x = state.tee.x; pl.ball.y = state.tee.y; pl.ball.z = state.tee.z;
+      pl.ball.vx = pl.ball.vy = pl.ball.vz = 0;
+      pl.finished = false;
+    });
+    state.currentPlayerIndex = 0;
+    btnNextHole.disabled = true;
+    btnNextHole.style.display = 'none';
+    infoEl.textContent = `Hole ${state.currentHole} ready — Par ${state.par[state.currentHole - 1]}`;
+    updateUI();
+  }
+
+  function endGame(){
+    state.running = false;
+    btnRescan.disabled = false;
+    // show scoreboard overlay
+    let results = 'Final Scores:\\n';
+    const sorted = [...state.players].sort((a,b)=>a.totalStrokes - b.totalStrokes);
+    sorted.forEach((p,i) => {
+      results += `${i+1}. ${p.name} — ${p.totalStrokes}\\n`;
+    });
+    alert('Game Over!\\n' + results);
+    // re-enable scan
+    btnScan.disabled = false;
+  }
+
+  // -------------------------
+  // Rendering loop
+  // -------------------------
+  function renderScene(){
+    clearDraw();
+    // draw detections & obstacles
+    drawObstacles();
+    drawDetections(state.detections);
+    drawHole();
+    drawBalls();
+    updateUI();
+  }
+
+  // main loop: physics + rendering + hand processing
+  let lastTime = performance.now();
+  function mainLoop(now){
+    const dt = Math.min(0.033, (now - lastTime) / 1000);
+    lastTime = now;
+    if(state.running){
+      // physics updated multiple small steps to be stable
+      stepPhysics(dt);
+      checkHoleIn();
+    }
+    renderScene();
+    processHands(); // process latest hand landmarks & possible pushes
+    // draw aim guide for current player
+    drawAimForCurrent();
+    requestAnimationFrame(mainLoop);
+  }
+
+  // draw aim guide: arrow from current ball to hole
+  function drawAimForCurrent(){
+    uctx.clearRect(0,0,uiCanvas.width,uiCanvas.height);
+    const p = state.players[state.currentPlayerIndex];
+    if(!p || p.finished) return;
+    const from = project(p.ball), to = project(state.hole);
+    uctx.lineWidth = 3;
+    uctx.strokeStyle = 'rgba(255,215,0,0.9)';
+    uctx.beginPath();
+    uctx.moveTo(from.sx, from.sy);
+    const midx = (from.sx + to.sx)/2, midy = (from.sy + to.sy)/2 - 40;
+    uctx.quadraticCurveTo(midx, midy, to.sx, to.sy);
+    uctx.stroke();
+    // arrowhead
+    const angle = Math.atan2(to.sy - midy, to.sx - midx);
+    uctx.fillStyle = '#FFD700';
+    uctx.beginPath();
+    uctx.moveTo(to.sx, to.sy);
+    uctx.lineTo(to.sx - 12*Math.cos(angle - Math.PI/6), to.sy - 12*Math.sin(angle - Math.PI/6));
+    uctx.lineTo(to.sx - 12*Math.cos(angle + Math.PI/6), to.sy - 12*Math.sin(angle + Math.PI/6));
+    uctx.closePath();
+    uctx.fill();
+  }
+
+  // -------------------------
+  // UI events wiring
+  // -------------------------
+  btnScan.addEventListener('click', scanScene);
+  btnStartGame.addEventListener('click', startGame);
+  btnNextHole.addEventListener('click', () => {
+    btnNextHole.disabled = true;
+    nextHole();
+  });
+  btnRescan.addEventListener('click', () => {
+    // allow rescanning mid-session: keep scores, re-evaluate tee/hole/obstacles
+    scanScene();
+  });
+
+  // initial scan wrapper that calls runYoloFrame a few times
+  async function scanScene(){
+    await scanSceneInternal();
+  }
+  async function scanSceneInternal(){
+    if(state.scanning) return;
+    state.scanning = true;
+    btnScan.disabled = true;
+    btnRescan.disabled = true;
+    infoEl.textContent = 'Scanning room… please move camera slowly';
+    // sample a few frames
+    let chosen = null;
+    for(let i=0;i<6;i++){
+      const dets = await runYoloFrame();
+      chosen = dets; // simply take latest — could merge across frames for stability
+      await new Promise(r=>setTimeout(r,150));
+    }
+    // map to 3D
+    const mapped = mapDetectionsTo3D(chosen || []);
+    state.detections = mapped;
+    pickTeeAndHoleFromScene(mapped);
+    buildObstaclesFromMapped(mapped);
+    buildPlayersFromMapped(mapped);
+    // enable Start Game
+    btnStartGame.disabled = false;
+    infoEl.textContent = `Scan done — ${state.players.length} players, ${state.obstacles.length} obstacles.`;
+    updateUI();
+    renderScene();
+    state.scanning = false;
+    btnScan.disabled = false;
+    btnRescan.disabled = false;
+  }
+
+  // -------------------------
+  // Init everything
+  // -------------------------
+  (async function init(){
+    resizeAll();
+    const camOk = await startCamera();
+    await initYOLO();
+    await initHands();
+    if(!camOk){ infoEl.textContent = 'Camera not available — you can still explore simulator by clicking Scan.'; state.simulateYOLO = true; }
+    infoEl.textContent = 'Ready — click Start Scan to detect room';
+    // kick main loop
+    requestAnimationFrame(mainLoop);
+  })();
+
+</script>
+</body>
+</html>
+
+

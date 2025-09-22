@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple OpenCV.js Example</title>
+  <script src="https://docs.opencv.org/4.10.0/opencv.js"></script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const video = document.createElement('video');
+
+      canvas.width = 640;
+      canvas.height = 480;
+
+      // Start video stream
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+          video.play();
+
+          video.addEventListener('loadeddata', () => {
+            function processFrame() {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+              // Convert video frame to OpenCV mat
+              const src = cv.imread(canvas);
+              const dst = new cv.Mat();
+
+              // Example OpenCV operation: convert to grayscale
+              cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+
+              // Show the processed frame
+              cv.imshow(canvas, dst);
+
+              // Cleanup
+              src.delete();
+              dst.delete();
+
+              requestAnimationFrame(processFrame);
+            }
+            processFrame();
+          });
+        })
+        .catch((err) => {
+          console.error('Error accessing webcam:', err);
+        });
+    });
+  </script>
+</body>
+</html>

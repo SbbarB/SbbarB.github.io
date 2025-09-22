@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      window.SpeechRecognition =
+        window.SpeechRecognition || webkitSpeechRecognition;
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = true;
+      recognition.continuous = true;
+
+      let finalTranscript = "";
+      let interimTranscript = "";
+      recognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          let transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+            interimTranscript = "";
+          } else {
+            interimTranscript = transcript;
+          }
+          let value = finalTranscript + interimTranscript;
+          let textEl = document.getElementById('text')
+          textEl.innerText = value
+        }
+      };
+      recognition.start();
+    </script>
+  </head>
+  <body>
+    <p id="text">Speech</p>
+  </body>
+</html>

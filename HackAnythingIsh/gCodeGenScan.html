@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>iPhone LiDAR → 3D Scan → G-code</title>
+<style>
+    body { font-family: Arial; margin: 0; padding: 0; }
+    #viewer { width: 100vw; height: 80vh; display: block; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>iPhone LiDAR → 3D Scan → Simulated G-code</h1>
+
+<button id="startScan">Start LiDAR Scan</button>
+<button id="generateGcode" disabled>Generate G-code & STL</button>
+<a id="downloadGcode" href="#" download="simulated.gcode">Download G-code</a>
+<a id="downloadSTL" href="#" download="reconstructed.stl">Download STL</a>
+
+<div id="viewer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/exporters/STLExporter.js"></script>
+
+<script>
+let scene, camera, renderer, pointCloudMesh;
+let points = [];
+
+function initViewer() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.z = 2;
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight*0.8);
+    document.getElementById('viewer').appendChild(renderer.domElement);
+    const light = new THREE.DirectionalLight(0xffffff,1);
+    light.position.set(1,1,1).normalize();
+    scene.add(light);
+    animate();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if(pointCloudMesh) pointCloudMesh.rotation.y += 0.001;
+    renderer.render(scene,camera);
+}
+
+initViewer();
+
+// ---------- LiDAR Scan Simulation ----------
+document.getElementById('startScan').addEventListener('click', async () => {
+    // Check for WebXR support
+    if(!navigator.xr) { alert("WebXR not supported"); return; }
+
+    // Simulated point cloud capture
+    points = [];
+    const count = 2000; // number of points
+    for(let i=0;i<count;i++){
+        // Random point in a sphere
+        const theta = Math.random()*Math.PI*2;
+        const phi = Math.random()*Math.PI;
+        const r = Math.random()*0.5 + 0.5;
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
+        points.push(new THREE.Vector3(x,y,z));
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.PointsMaterial({size:0.01,color:0xff0000});
+    if(pointCloudMesh) scene.remove(pointCloudMesh);
+    pointCloudMesh = new THREE.Points(geometry, material);
+    scene.add(pointCloudMesh);
+
+    document.getElementById('generateGcode').disabled = false;
+    alert("Scan complete: point cloud generated in browser");
+});
+
+// ---------- Generate G-code & STL ----------
+document.getElementById('generateGcode').addEventListener('click', () => {
+    if(points.length === 0) { alert("No scan data"); return; }
+
+    // Simulated G-code: simple layer-by-layer paths
+    let gcode = "; Simulated G-code from LiDAR scan\n";
+    const layers = 20;
+    for(let l=0;l<layers;l++){
+        gcode += `; Layer ${l+1}\n`;
+        gcode += `G1 Z${l*0.02} F300\n`; // Z height
+        gcode += `G1 X0 Y0 F1500\n`;
+        gcode += `G1 X0.5 Y0\nG1 X0.5 Y0.5\nG1 X0 Y0.5\nG1 X0 Y0\n`;
+    }
+    const gcodeBlob = new Blob([gcode],{type:'text/plain'});
+    document.getElementById('downloadGcode').href = URL.createObjectURL(gcodeBlob);
+
+    // Reconstruct STL: make a simple mesh from points
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const exporter = new THREE.STLExporter();
+    const stlString = exporter.parse(new THREE.Points(geometry));
+    const stlBlob = new Blob([stlString], {type:'text/plain'});
+    document.getElementById('downloadSTL').href = URL.createObjectURL(stlBlob);
+
+    alert("Simulated G-code and STL ready for download!");
+});
+</script>
+
+</body>
+</html>
+

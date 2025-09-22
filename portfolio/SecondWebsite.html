@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Name - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent-primary: #6495ED;
+            --accent-secondary: #FFB6C1;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            cursor: none;
+            position: relative;
+        }
+
+        /* Interactive Mesh Network */
+        .mesh-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: difference;
+            transition: none;
+            opacity: 1;
+            box-shadow: 0 0 20px var(--accent-primary);
+            animation: cursorColorCycle 8s ease-in-out infinite;
+            will-change: transform;
+        }
+
+        @keyframes cursorColorCycle {
+            0%, 100% { 
+                background: var(--accent-primary); 
+                box-shadow: 0 0 20px var(--accent-primary); 
+            }
+            50% { 
+                background: var(--accent-secondary); 
+                box-shadow: 0 0 20px var(--accent-secondary); 
+            }
+        }
+
+        .cursor.hover {
+            transform: scale(2);
+            background: var(--text-primary);
+            box-shadow: 0 0 30px var(--accent-primary);
+        }
+
+        .cursor-trail {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.6;
+            transition: none;
+            will-change: transform;
+        }
+
+        .cursor-dot {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9997;
+            opacity: 0.4;
+            will-change: transform;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Loading Animation */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: all 0.8s ease;
+        }
+
+        .loader-text {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: loaderTextReveal 1s ease-out 0.5s forwards, colorCycle 4s ease-in-out infinite;
+        }
+
+        @keyframes loaderTextReveal {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes colorCycle {
+            0%, 100% { color: var(--accent-primary); }
+            50% { color: var(--accent-secondary); }
+        }
+
+        .loader-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--accent-primary), 
+                var(--accent-secondary), 
+                transparent);
+            animation: loaderProgress 2s ease-in-out forwards;
+        }
+
+        @keyframes loaderProgress {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .dna-helix {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 200px;
+        }
+
+        .dna-strand {
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .dna-strand:first-child {
+            left: 20px;
+            animation: dnaRotate 3s linear infinite;
+            background: linear-gradient(to bottom, 
+                var(--accent-primary), 
+                transparent, 
+                var(--accent-secondary));
+        }
+
+        .dna-strand:last-child {
+            right: 20px;
+            animation: dnaRotate 3s linear infinite reverse;
+            background: linear-gradient(to bottom, 
+                var(--accent-secondary), 
+                transparent, 
+                var(--accent-primary));
+        }
+
+        @keyframes dnaRotate {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(100, 149, 237, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.1) 0%, transparent 50%);
+            opacity: 0;
+            animation: heroGlow 3s ease-out 1s forwards;
+        }
+
+        @keyframes heroGlow {
+            0% { 
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 3D Orbital Animation */
+        .orbital-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            perspective: 1000px;
+            z-index: 200;
+            transition: opacity 2s ease-out, transform 2s ease-out;
+        }
+
+        .orbital {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: orbitalRotate 12s linear infinite;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .orbital.morphed {
+            animation-play-state: running;
+        }
+
+        .orbital-face {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            background: linear-gradient(45deg, 
+                rgba(100, 149, 237, 0.1), 
+                rgba(255, 182, 193, 0.1),
+                rgba(255, 255, 255, 0.05));
+            background-size: 400% 400%;
+            animation: orbitalGradient 8s ease-in-out infinite;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .orbital-face:nth-child(1) {
+            transform: rotateY(0deg) translateZ(100px);
+            animation-delay: 0s;
+        }
+
+        .orbital-face:nth-child(2) {
+            transform: rotateY(90deg) translateZ(100px);
+            animation-delay: 1s;
+        }
+
+        .orbital-face:nth-child(3) {
+            transform: rotateY(180deg) translateZ(100px);
+            animation-delay: 2s;
+        }
+
+        .orbital-face:nth-child(4) {
+            transform: rotateY(270deg) translateZ(100px);
+            animation-delay: 3s;
+        }
+
+        .orbital-face:nth-child(5) {
+            transform: rotateX(90deg) translateZ(100px);
+            animation-delay: 4s;
+        }
+
+        .orbital-face:nth-child(6) {
+            transform: rotateX(-90deg) translateZ(100px);
+            animation-delay: 5s;
+        }
+
+        @keyframes orbitalRotate {
+            0% { 
+                transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+            }
+            25% { 
+                transform: rotateX(30deg) rotateY(90deg) rotateZ(30deg) scale(1.1);
+            }
+            50% { 
+                transform: rotateX(60deg) rotateY(180deg) rotateZ(60deg) scale(0.9);
+            }
+            75% { 
+                transform: rotateX(90deg) rotateY(270deg) rotateZ(90deg) scale(1.05);
+            }
+            100% { 
+                transform: rotateX(120deg) rotateY(360deg) rotateZ(120deg) scale(1);
+            }
+        }
+
+        @keyframes orbitalGradient {
+            0%, 100% { 
+                background-position: 0% 50%;
+                filter: hue-rotate(0deg) brightness(1);
+            }
+            33% { 
+                background-position: 100% 0%;
+                filter: hue-rotate(120deg) brightness(1.2);
+            }
+            66% { 
+                background-position: 100% 100%;
+                filter: hue-rotate(240deg) brightness(0.8);
+            }
+        }
+
+        /* Electron Orbital Shapes - True 3D Volumetric */
+        
+        /* S-orbital (spherical) - Multiple concentric shells */
+        .orbital.s-orbital .orbital-face {
+            border-radius: 50%;
+            transform-origin: center;
+        }
+
+        /* Outer shell */
+        .orbital.s-orbital .orbital-face:nth-child(1) {
+            transform: rotateY(0deg) translateZ(100px) scale(1.4);
+            opacity: 0.3;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(2) {
+            transform: rotateY(60deg) translateZ(100px) scale(1.4);
+            opacity: 0.3;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(3) {
+            transform: rotateY(120deg) translateZ(100px) scale(1.4);
+            opacity: 0.3;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(4) {
+            transform: rotateY(180deg) translateZ(100px) scale(1.4);
+            opacity: 0.3;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(5) {
+            transform: rotateX(90deg) translateZ(80px) scale(1.2);
+            opacity: 0.5;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(6) {
+            transform: rotateX(-90deg) translateZ(60px) scale(1.0);
+            opacity: 0.7;
+        }
+        /* Inner shells for 3D volume */
+        .orbital.s-orbital .orbital-face:nth-child(7) {
+            transform: rotateY(30deg) translateZ(40px) scale(0.8);
+            opacity: 0.8;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(8) {
+            transform: rotateY(90deg) translateZ(40px) scale(0.8);
+            opacity: 0.8;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(9) {
+            transform: rotateY(150deg) translateZ(40px) scale(0.8);
+            opacity: 0.8;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(10) {
+            transform: rotateY(210deg) translateZ(40px) scale(0.8);
+            opacity: 0.8;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(11) {
+            transform: rotateX(45deg) translateZ(20px) scale(0.6);
+            opacity: 0.9;
+        }
+        .orbital.s-orbital .orbital-face:nth-child(12) {
+            transform: rotateX(-45deg) translateZ(20px) scale(0.6);
+            opacity: 0.9;
+        }
+
+        /* P-orbital (dumbbell shape) - Multiple density shells */
+        .orbital.p-orbital .orbital-face:nth-child(1) {
+            transform: rotateY(0deg) translateZ(140px) scale(0.3, 2.0);
+            border-radius: 50%;
+            opacity: 0.25;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(2) {
+            transform: rotateY(90deg) translateZ(120px) scale(0.35, 1.8);
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(3) {
+            transform: rotateY(180deg) translateZ(100px) scale(0.4, 1.6);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(4) {
+            transform: rotateY(270deg) translateZ(80px) scale(0.45, 1.4);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(5) {
+            transform: rotateX(90deg) translateZ(60px) scale(0.25);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(6) {
+            transform: rotateX(-90deg) translateZ(40px) scale(0.2);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+        /* Additional P-orbital volume */
+        .orbital.p-orbital .orbital-face:nth-child(7) {
+            transform: rotateY(45deg) translateZ(60px) scale(0.5, 1.2);
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(8) {
+            transform: rotateY(135deg) translateZ(50px) scale(0.55, 1.0);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(9) {
+            transform: rotateY(225deg) translateZ(40px) scale(0.6, 0.8);
+            border-radius: 50%;
+            opacity: 0.9;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(10) {
+            transform: rotateY(315deg) translateZ(30px) scale(0.65, 0.6);
+            border-radius: 50%;
+            opacity: 0.95;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(11) {
+            transform: rotateX(45deg) translateZ(20px) scale(0.15);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        .orbital.p-orbital .orbital-face:nth-child(12) {
+            transform: rotateX(-45deg) translateZ(20px) scale(0.15);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        /* D-orbital (cloverleaf) - Multiple complex shells */
+        .orbital.d-orbital .orbital-face:nth-child(1) {
+            transform: rotateY(0deg) translateZ(120px) scale(1.5, 0.6) rotateZ(45deg);
+            border-radius: 30% 70% 70% 30%;
+            opacity: 0.3;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(2) {
+            transform: rotateY(72deg) translateZ(100px) scale(1.3, 0.7) rotateZ(45deg);
+            border-radius: 30% 70% 70% 30%;
+            opacity: 0.5;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(3) {
+            transform: rotateY(144deg) translateZ(80px) scale(1.1, 0.8) rotateZ(45deg);
+            border-radius: 30% 70% 70% 30%;
+            opacity: 0.7;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(4) {
+            transform: rotateY(216deg) translateZ(60px) scale(0.9, 0.9) rotateZ(45deg);
+            border-radius: 30% 70% 70% 30%;
+            opacity: 0.8;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(5) {
+            transform: rotateX(45deg) translateZ(70px) scale(1.0, 0.8) rotateZ(30deg);
+            border-radius: 40% 60% 60% 40%;
+            opacity: 0.6;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(6) {
+            transform: rotateX(-45deg) translateZ(50px) scale(0.8, 1.0) rotateZ(-30deg);
+            border-radius: 40% 60% 60% 40%;
+            opacity: 0.7;
+        }
+        /* Additional D-orbital lobes */
+        .orbital.d-orbital .orbital-face:nth-child(7) {
+            transform: rotateY(36deg) translateZ(40px) scale(0.7, 1.1) rotateZ(15deg);
+            border-radius: 45% 55% 55% 45%;
+            opacity: 0.8;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(8) {
+            transform: rotateY(108deg) translateZ(35px) scale(0.6, 1.2) rotateZ(-15deg);
+            border-radius: 35% 65% 65% 35%;
+            opacity: 0.85;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(9) {
+            transform: rotateY(180deg) translateZ(30px) scale(0.5, 1.3) rotateZ(60deg);
+            border-radius: 25% 75% 75% 25%;
+            opacity: 0.9;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(10) {
+            transform: rotateY(252deg) translateZ(25px) scale(0.4, 1.4) rotateZ(-60deg);
+            border-radius: 20% 80% 80% 20%;
+            opacity: 0.92;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(11) {
+            transform: rotateX(75deg) translateZ(20px) scale(0.6, 0.6) rotateZ(75deg);
+            border-radius: 50% 50% 50% 50%;
+            opacity: 0.8;
+        }
+        .orbital.d-orbital .orbital-face:nth-child(12) {
+            transform: rotateX(-75deg) translateZ(15px) scale(0.5, 0.7) rotateZ(-75deg);
+            border-radius: 45% 55% 45% 55%;
+            opacity: 0.85;
+        }
+
+        /* F-orbital (complex multi-lobed) - Highly complex 3D structure */
+        .orbital.f-orbital .orbital-face:nth-child(1) {
+            transform: rotateY(25deg) translateZ(150px) scale(1.6, 0.2) rotateZ(70deg) rotateX(35deg);
+            border-radius: 15% 85% 85% 15%;
+            opacity: 0.2;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(2) {
+            transform: rotateY(155deg) translateZ(90px) scale(0.2, 1.8) rotateZ(-85deg) rotateX(-25deg);
+            border-radius: 75% 25% 25% 75%;
+            opacity: 0.4;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(3) {
+            transform: rotateY(285deg) translateZ(130px) scale(1.3, 0.5) rotateZ(125deg) rotateX(50deg);
+            border-radius: 45% 55% 85% 15%;
+            opacity: 0.3;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(4) {
+            transform: rotateY(205deg) translateZ(70px) scale(0.6, 1.5) rotateZ(-50deg) rotateX(-35deg);
+            border-radius: 25% 75% 45% 55%;
+            opacity: 0.6;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(5) {
+            transform: rotateX(75deg) translateZ(110px) scale(1.2, 0.7) rotateZ(160deg);
+            border-radius: 65% 35% 35% 65%;
+            opacity: 0.4;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(6) {
+            transform: rotateX(-125deg) translateZ(60px) scale(0.8, 1.4) rotateZ(-75deg);
+            border-radius: 35% 65% 75% 25%;
+            opacity: 0.5;
+        }
+        /* Additional F-orbital complexity */
+        .orbital.f-orbital .orbital-face:nth-child(7) {
+            transform: rotateY(95deg) translateZ(50px) scale(1.0, 0.3) rotateZ(45deg) rotateX(60deg);
+            border-radius: 10% 90% 90% 10%;
+            opacity: 0.7;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(8) {
+            transform: rotateY(225deg) translateZ(40px) scale(0.3, 1.2) rotateZ(-120deg) rotateX(-45deg);
+            border-radius: 80% 20% 20% 80%;
+            opacity: 0.75;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(9) {
+            transform: rotateY(345deg) translateZ(35px) scale(0.8, 0.4) rotateZ(95deg) rotateX(30deg);
+            border-radius: 30% 70% 90% 10%;
+            opacity: 0.8;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(10) {
+            transform: rotateY(115deg) translateZ(30px) scale(0.4, 0.9) rotateZ(-25deg) rotateX(-55deg);
+            border-radius: 60% 40% 30% 70%;
+            opacity: 0.82;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(11) {
+            transform: rotateX(105deg) translateZ(25px) scale(0.6, 0.5) rotateZ(200deg);
+            border-radius: 70% 30% 50% 50%;
+            opacity: 0.85;
+        }
+        .orbital.f-orbital .orbital-face:nth-child(12) {
+            transform: rotateX(-155deg) translateZ(20px) scale(0.3, 0.8) rotateZ(-105deg);
+            border-radius: 40% 60% 80% 20%;
+            opacity: 0.88;
+        }
+
+        .orbital-particles {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            z-index: 199;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: particleFloat 6s ease-in-out infinite;
+        }
+
+        .particle:nth-child(1) {
+            background: var(--accent-primary);
+            top: 20%; left: 30%;
+            animation-delay: 0s;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        .particle:nth-child(2) {
+            background: var(--accent-secondary);
+            top: 70%; left: 80%;
+            animation-delay: 1s;
+            box-shadow: 0 0 10px var(--accent-secondary);
+        }
+
+        .particle:nth-child(3) {
+            background: var(--accent-primary);
+            top: 40%; left: 70%;
+            animation-delay: 2s;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        .particle:nth-child(4) {
+            background: var(--accent-secondary);
+            top: 80%; left: 20%;
+            animation-delay: 3s;
+            box-shadow: 0 0 10px var(--accent-secondary);
+        }
+
+        .particle:nth-child(5) {
+            background: var(--text-primary);
+            top: 60%; left: 50%;
+            animation-delay: 4s;
+            box-shadow: 0 0 10px var(--text-primary);
+        }
+
+        @keyframes particleFloat {
+            0%, 100% { 
+                transform: translateY(0px) scale(1);
+                opacity: 0.6;
+            }
+            50% { 
+                transform: translateY(-30px) scale(1.5);
+                opacity: 1;
+            }
+        }
+
+        .orbital-container.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 250;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: heroReveal 2s ease-out 0.5s forwards;
+            position: relative;
+        }
+
+        @keyframes heroReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 8rem);
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, 
+                var(--text-primary) 0%, 
+                var(--accent-primary) 50%, 
+                var(--accent-secondary) 100%);
+            background-size: 300% 300%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            overflow: hidden;
+            animation: gradientShift 6s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero h1::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(100, 149, 237, 0.6), 
+                rgba(255, 182, 193, 0.6), 
+                transparent);
+            animation: shimmer 4s ease-in-out 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+
+        .hero .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: subtitleReveal 1.5s ease-out 1.5s forwards;
+        }
+
+        @keyframes subtitleReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 60px;
+            background: linear-gradient(to bottom, 
+                var(--accent-primary), 
+                var(--accent-secondary), 
+                transparent);
+            animation: scrollPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Projects Section */
+        .projects {
+            padding: 8rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 4rem;
+            text-align: center;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .project-card {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-primary);
+            box-shadow: 
+                0 20px 40px rgba(100, 149, 237, 0.2),
+                0 0 20px rgba(255, 182, 193, 0.1);
+        }
+
+        .project-image {
+            height: 250px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-image::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, 
+                var(--accent-primary) 0%, 
+                var(--accent-secondary) 50%, 
+                transparent 100%);
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: projectPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes projectPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .project-content {
+            padding: 2rem;
+        }
+
+        .project-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .project-tech {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .project-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .project-link {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .project-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 5px 15px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Modal for expanded project view */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .modal-image {
+            height: 300px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 8rem 2rem;
+            text-align: center;
+            background: rgba(17, 17, 17, 0.9);
+            position: relative;
+            z-index: 100;
+        }
+
+        .contact-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .contact-links {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cursor, .cursor-trail, .cursor-dot {
+                display: none;
+            }
+
+            body {
+                cursor: auto;
+            }
+        }
+
+        /* Intersection Observer animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Interactive Mesh Network -->
+    <canvas class="mesh-canvas" id="meshCanvas"></canvas>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="dna-helix">
+            <div class="dna-strand"></div>
+            <div class="dna-strand"></div>
+        </div>
+        <div class="loader-text">Initializing Portfolio...</div>
+        <div class="loader-progress"></div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-trail" id="cursorTrail1"></div>
+    <div class="cursor-trail" id="cursorTrail2"></div>
+    <div class="cursor-trail" id="cursorTrail3"></div>
+    
+    <!-- Cursor dot trail -->
+    <div class="cursor-dot" id="dot1"></div>
+    <div class="cursor-dot" id="dot2"></div>
+    <div class="cursor-dot" id="dot3"></div>
+    <div class="cursor-dot" id="dot4"></div>
+    <div class="cursor-dot" id="dot5"></div>
+    <div class="cursor-dot" id="dot6"></div>
+    <div class="cursor-dot" id="dot7"></div>
+    <div class="cursor-dot" id="dot8"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">Your Name</div>
+            <ul class="nav-links">
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        
+        <!-- 3D Orbital Animation -->
+        <div class="orbital-container" id="orbitalContainer">
+            <div class="orbital-particles">
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+            </div>
+            <div class="orbital" id="orbital">
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <!-- Additional faces for 3D volume -->
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+                <div class="orbital-face"></div>
+            </div>
+        </div>
+        
+        <div class="hero-content">
+            <h1>Developer</h1>
+            <p class="subtitle">Crafting digital experiences with code</p>
+        </div>
+        <div class="scroll-indicator"></div>
+    </section>
+
+    <!-- Projects Section -->
+    <section class="projects" id="projects">
+        <h2 class="section-title">Selected Work</h2>
+        <div class="projects-grid">
+            <!-- Project 1 -->
+            <div class="project-card fade-in" onclick="openModal('project1')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Project Alpha</h3>
+                    <p class="project-tech">React • Node.js • MongoDB</p>
+                    <p class="project-description">A full-stack web application that demonstrates modern development practices and clean architecture.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 2 -->
+            <div class="project-card fade-in" onclick="openModal('project2')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Neural Network Viz</h3>
+                    <p class="project-tech">Python • TensorFlow • D3.js</p>
+                    <p class="project-description">Interactive visualization tool for understanding deep learning architectures and training processes.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project-card fade-in" onclick="openModal('project3')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Mobile Innovation</h3>
+                    <p class="project-tech">React Native • Firebase • TypeScript</p>
+                    <p class="project-description">Cross-platform mobile application with real-time features and seamless user experience.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">App Store</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 4 -->
+            <div class="project-card fade-in" onclick="openModal('project4')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Cloud Architecture</h3>
+                    <p class="project-tech">AWS • Docker • Kubernetes</p>
+                    <p class="project-description">Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Documentation</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal for expanded project details -->
+    <div class="modal" id="projectModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-image" id="modalImage"></div>
+            <div class="modal-body">
+                <h3 id="modalTitle">Project Title</h3>
+                <p id="modalTech" class="project-tech">Technologies</p>
+                <div id="modalDescription">
+                    <p>Detailed project description goes here. This is where you can elaborate on the challenges, solutions, and technical details of your project.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Feature 1</li>
+                        <li>Feature 2</li>
+                        <li>Feature 3</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Description of challenges and how they were solved.</p>
+                </div>
+                <div class="project-links" id="modalLinks">
+                    <a href="#" class="project-link">Live Demo</a>
+                    <a href="#" class="project-link">GitHub</a>
+                    <a href="#" class="project-link">Case Study</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="contact-content">
+            <h2>Let's Build Something</h2>
+            <p class="subtitle">Ready to collaborate on your next project</p>
+            <div class="contact-links">
+                <a href="mailto:your.email@domain.com" class="contact-link">
+                    <span>Email</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span>LinkedIn</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Interactive Mesh Network System
+        class MeshNetwork {
+            constructor() {
+                this.canvas = document.getElementById('meshCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.nodes = [];
+                this.connections = [];
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.influenceRadius = 100;
+                this.isBreakingApart = false;
+                this.breakStartTime = 0;
+                this.hasTriggeredBreak = false;
+                
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            init() {
+                this.resize();
+                this.createNodes();
+                this.createConnections();
+            }
+            
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+            }
+            
+            createNodes() {
+                const cols = Math.floor(this.width / 60) + 1;
+                const rows = Math.floor(this.height / 60) + 1;
+                
+                for (let i = 0; i < cols; i++) {
+                    for (let j = 0; j < rows; j++) {
+                        this.nodes.push({
+                            x: i * 60,
+                            y: j * 60,
+                            originalX: i * 60,
+                            originalY: j * 60,
+                            vx: 0,
+                            vy: 0,
+                            scatterVx: (Math.random() - 0.5) * 8,
+                            scatterVy: (Math.random() - 0.5) * 8,
+                            opacity: 1,
+                            size: 2
+                        });
+                    }
+                }
+            }
+            
+            createConnections() {
+                const cols = Math.floor(this.width / 60) + 1;
+                
+                this.nodes.forEach((node, index) => {
+                    const row = Math.floor(index / cols);
+                    const col = index % cols;
+                    
+                    // Connect to right neighbor
+                    if (col < cols - 1) {
+                        this.connections.push({
+                            start: index,
+                            end: index + 1,
+                            opacity: 1,
+                            broken: false
+                        });
+                    }
+                    
+                    // Connect to bottom neighbor
+                    if (row < Math.floor(this.height / 60)) {
+                        const bottomIndex = index + cols;
+                        if (bottomIndex < this.nodes.length) {
+                            this.connections.push({
+                                start: index,
+                                end: bottomIndex,
+                                opacity: 1,
+                                broken: false
+                            });
+                        }
+                    }
+                });
+            }
+            
+            triggerBreakApart() {
+                if (!this.hasTriggeredBreak) {
+                    this.isBreakingApart = true;
+                    this.breakStartTime = Date.now();
+                    this.hasTriggeredBreak = true;
+                    
+                    // Add random scatter velocities to nodes
+                    this.nodes.forEach(node => {
+                        node.scatterVx = (Math.random() - 0.5) * 12;
+                        node.scatterVy = (Math.random() - 0.5) * 12 - 3; // Slight upward bias
+                    });
+                }
+            }
+            
+            updateNodes() {
+                if (this.isBreakingApart) {
+                    const elapsed = (Date.now() - this.breakStartTime) / 1000;
+                    const breakDuration = 3; // 3 seconds total break animation
+                    
+                    // Break connections first (0-1 seconds)
+                    if (elapsed < 1) {
+                        this.connections.forEach(connection => {
+                            if (Math.random() < 0.02) { // Random connection breaking
+                                connection.broken = true;
+                            }
+                            if (connection.broken) {
+                                connection.opacity -= 0.05;
+                            }
+                        });
+                    }
+                    
+                    // Scatter nodes (1-3 seconds)
+                    if (elapsed > 0.5) {
+                        this.nodes.forEach(node => {
+                            // Apply gravity and scatter
+                            node.scatterVy += 0.2; // Gravity
+                            node.x += node.scatterVx;
+                            node.y += node.scatterVy;
+                            
+                            // Fade out
+                            node.opacity -= 0.008;
+                            node.size -= 0.01;
+                            
+                            // Ensure minimum values
+                            node.opacity = Math.max(0, node.opacity);
+                            node.size = Math.max(0, node.size);
+                        });
+                    }
+                    
+                    return; // Skip normal node updates during break apart
+                }
+                
+                // Normal mesh behavior
+                this.nodes.forEach(node => {
+                    const dx = this.mouseX - node.originalX;
+                    const dy = this.mouseY - node.originalY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.influenceRadius) {
+                        const force = (this.influenceRadius - distance) / this.influenceRadius;
+                        const angle = Math.atan2(dy, dx);
+                        
+                        const displacement = force * 30;
+                        node.vx += Math.cos(angle) * displacement * 0.1;
+                        node.vy += Math.sin(angle) * displacement * 0.1;
+                    }
+                    
+                    // Apply spring force back to original position
+                    const restoreForce = 0.05;
+                    node.vx += (node.originalX - node.x) * restoreForce;
+                    node.vy += (node.originalY - node.y) * restoreForce;
+                    
+                    // Apply damping
+                    node.vx *= 0.9;
+                    node.vy *= 0.9;
+                    
+                    // Update position
+                    node.x += node.vx;
+                    node.y += node.vy;
+                });
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Draw connections
+                this.connections.forEach(connection => {
+                    if (connection.opacity <= 0) return;
+                    
+                    const start = this.nodes[connection.start];
+                    const end = this.nodes[connection.end];
+                    
+                    if (start && end) {
+                        this.ctx.strokeStyle = `rgba(100, 149, 237, ${0.3 * connection.opacity})`;
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(start.x, start.y);
+                        this.ctx.lineTo(end.x, end.y);
+                        this.ctx.stroke();
+                    }
+                });
+                
+                // Draw nodes
+                this.nodes.forEach(node => {
+                    if (node.opacity <= 0 || node.size <= 0) return;
+                    
+                    const dx = this.mouseX - node.x;
+                    const dy = this.mouseY - node.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    let opacity = 0.4 * node.opacity;
+                    let color = '100, 149, 237';
+                    
+                    if (distance < this.influenceRadius && !this.isBreakingApart) {
+                        opacity = 0.8 * node.opacity;
+                        color = '255, 182, 193';
+                    }
+                    
+                    this.ctx.fillStyle = `rgba(${color}, ${opacity})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+            }
+            
+            animate() {
+                this.updateNodes();
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.resize();
+                    if (!this.isBreakingApart) {
+                        this.nodes = [];
+                        this.connections = [];
+                        this.createNodes();
+                        this.createConnections();
+                    }
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                // Trigger break apart on scroll
+                window.addEventListener('scroll', () => {
+                    const scrollPercent = window.scrollY / (window.innerHeight * 0.5);
+                    if (scrollPercent > 0.3 && !this.hasTriggeredBreak) {
+                        this.triggerBreakApart();
+                    }
+                });
+            }
+        }
+
+        // Initialize mesh network
+        const meshNetwork = new MeshNetwork();
+
+        // Orbital and cursor system
+        let orbital = null;
+        let orbitalContainer = null;
+        let currentOrbital = null;
+
+        // Available electron orbital types
+        const orbitalTypes = ['s-orbital', 'p-orbital', 'd-orbital', 'f-orbital'];
+
+        function getRandomOrbital() {
+            return orbitalTypes[Math.floor(Math.random() * orbitalTypes.length)];
+        }
+
+        // Cursor system
+        const cursor = document.getElementById('cursor');
+        const trails = [
+            document.getElementById('cursorTrail1'),
+            document.getElementById('cursorTrail2'),
+            document.getElementById('cursorTrail3')
+        ];
+        const dots = [
+            document.getElementById('dot1'),
+            document.getElementById('dot2'),
+            document.getElementById('dot3'),
+            document.getElementById('dot4'),
+            document.getElementById('dot5'),
+            document.getElementById('dot6'),
+            document.getElementById('dot7'),
+            document.getElementById('dot8')
+        ];
+        const hoverElements = document.querySelectorAll('a, button, .project-card');
+
+        let mouseX = 0, mouseY = 0;
+        let cursorX = 0, cursorY = 0;
+        let trail1X = 0, trail1Y = 0;
+        let trail2X = 0, trail2Y = 0;
+        let trail3X = 0, trail3Y = 0;
+
+        // Dot trail positions
+        let dotPositions = Array(8).fill().map(() => ({x: 0, y: 0}));
+        let mouseHistory = Array(20).fill().map(() => ({x: 0, y: 0}));
+
+        // Mouse movement tracking
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // Update mouse history for dot trail
+            mouseHistory.unshift({x: mouseX, y: mouseY});
+            if (mouseHistory.length > 20) mouseHistory.pop();
+        });
+
+        // Initialize cursor colors
+        function initializeCursorColors() {
+            if (trails[0]) {
+                trails[0].style.background = 'var(--accent-primary)';
+                trails[0].style.boxShadow = '0 0 10px var(--accent-primary)';
+            }
+            if (trails[1]) {
+                trails[1].style.background = 'var(--accent-secondary)';
+                trails[1].style.boxShadow = '0 0 10px var(--accent-secondary)';
+            }
+            if (trails[2]) {
+                trails[2].style.background = 'var(--accent-primary)';
+                trails[2].style.boxShadow = '0 0 10px var(--accent-primary)';
+            }
+
+            // Set dot colors
+            const dotColors = [
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)'
+            ];
+
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    dot.style.background = dotColors[i];
+                    dot.style.boxShadow = `0 0 5px ${dotColors[i]}`;
+                }
+            });
+        }
+
+        // Check if mouse is over orbital
+        function isMouseOverOrbital(x, y) {
+            if (!orbitalContainer || orbitalContainer.classList.contains('fade-out')) return false;
+            try {
+                const rect = orbitalContainer.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                return distance < 150;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Cursor animation
+        function animateCursor() {
+            // Smooth interpolation for cursor
+            if (cursor) {
+                cursorX += (mouseX - cursorX) * 0.3;
+                cursorY += (mouseY - cursorY) * 0.3;
+                cursor.style.transform = `translate(${cursorX - 10}px, ${cursorY - 10}px)`;
+            }
+            
+            // Smooth interpolation for trails
+            trail1X += (cursorX - trail1X) * 0.2;
+            trail1Y += (cursorY - trail1Y) * 0.2;
+            
+            trail2X += (trail1X - trail2X) * 0.15;
+            trail2Y += (trail1Y - trail2Y) * 0.15;
+            
+            trail3X += (trail2X - trail3X) * 0.1;
+            trail3Y += (trail2Y - trail3Y) * 0.1;
+
+            // Update dot positions
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    const delay = (i + 1) * 2;
+                    const targetIndex = Math.min(delay, mouseHistory.length - 1);
+                    const targetX = mouseHistory[targetIndex].x;
+                    const targetY = mouseHistory[targetIndex].y;
+                    
+                    dotPositions[i].x += (targetX - dotPositions[i].x) * 0.15;
+                    dotPositions[i].y += (targetY - dotPositions[i].y) * 0.15;
+                    
+                    dot.style.transform = `translate(${dotPositions[i].x - 1.5}px, ${dotPositions[i].y - 1.5}px)`;
+                }
+            });
+            
+            // Apply transforms to trails
+            if (trails[0]) trails[0].style.transform = `translate(${trail1X - 3}px, ${trail1Y - 3}px)`;
+            if (trails[1]) trails[1].style.transform = `translate(${trail2X - 3}px, ${trail2Y - 3}px)`;
+            if (trails[2]) trails[2].style.transform = `translate(${trail3X - 3}px, ${trail3Y - 3}px)`;
+            
+            // Check orbital interaction
+            if (orbital && orbitalContainer) {
+                try {
+                    if (isMouseOverOrbital(mouseX, mouseY)) {
+                        if (!currentOrbital) {
+                            // Remove existing orbital classes
+                            orbitalTypes.forEach(type => orbital.classList.remove(type));
+                            // Apply new random orbital
+                            currentOrbital = getRandomOrbital();
+                            orbital.classList.add('morphed', currentOrbital);
+                        }
+                    } else {
+                        if (currentOrbital) {
+                            // Remove orbital classes
+                            orbital.classList.remove('morphed');
+                            orbitalTypes.forEach(type => orbital.classList.remove(type));
+                            currentOrbital = null;
+                        }
+                    }
+                } catch (error) {
+                    // Fail silently
+                }
+            }
+            
+            requestAnimationFrame(animateCursor);
+        }
+
+        // Hover effects
+        hoverElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                if (cursor) cursor.classList.add('hover');
+                trails.forEach(trail => {
+                    if (trail && trail.style.transform) {
+                        trail.style.transform += ' scale(1.5)';
+                    }
+                });
+            });
+            el.addEventListener('mouseleave', () => {
+                if (cursor) cursor.classList.remove('hover');
+                trails.forEach(trail => {
+                    if (trail && trail.style.transform) {
+                        trail.style.transform = trail.style.transform.replace(' scale(1.5)', '');
+                    }
+                });
+            });
+        });
+
+        // Orbital fade out on scroll
+        function handleOrbitalScroll() {
+            if (!orbitalContainer) return;
+            const scrollY = window.scrollY;
+            const windowHeight = window.innerHeight;
+            
+            if (scrollY > windowHeight * 0.3) {
+                orbitalContainer.classList.add('fade-out');
+            } else {
+                orbitalContainer.classList.remove('fade-out');
+            }
+        }
+
+        // Initialize everything
+        function initializeElements() {
+            orbital = document.getElementById('orbital');
+            orbitalContainer = document.getElementById('orbitalContainer');
+            initializeCursorColors();
+        }
+
+        // DOM ready initialization
+        document.addEventListener('DOMContentLoaded', initializeElements);
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeElements);
+        } else {
+            initializeElements();
+        }
+
+        // Start animations
+        animateCursor();
+
+        // Loading screen
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.transform = 'scale(0.95)';
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 800);
+                }
+            }, 2500);
+        });
+
+        // Scroll listener
+        window.addEventListener('scroll', handleOrbitalScroll);
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Project modal functionality
+        const projectData = {
+            project1: {
+                title: "Project Alpha",
+                tech: "React • Node.js • MongoDB • GraphQL",
+                description: `
+                    <p>A comprehensive full-stack web application that showcases modern development practices and clean architecture patterns.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time data synchronization with WebSocket integration</li>
+                        <li>Advanced user authentication and authorization</li>
+                        <li>Responsive design with mobile-first approach</li>
+                        <li>RESTful API with GraphQL endpoint</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Implemented complex state management across multiple components while maintaining optimal performance through code splitting and lazy loading strategies.</p>
+                `
+            },
+            project2: {
+                title: "Neural Network Visualizer",
+                tech: "Python • TensorFlow • D3.js • Flask",
+                description: `
+                    <p>An interactive web application for visualizing and understanding deep learning architectures and training processes in real-time.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Dynamic network architecture visualization</li>
+                        <li>Real-time training metrics and loss curves</li>
+                        <li>Interactive layer exploration and parameter tuning</li>
+                        <li>Support for multiple neural network types</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Optimized rendering performance for large networks while maintaining smooth animations and real-time data streaming from the training backend.</p>
+                `
+            },
+            project3: {
+                title: "Mobile Innovation App",
+                tech: "React Native • Firebase • TypeScript • Redux",
+                description: `
+                    <p>Cross-platform mobile application with real-time features and seamless user experience across iOS and Android platforms.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time messaging and notifications</li>
+                        <li>Offline-first architecture with data synchronization</li>
+                        <li>Advanced camera integration and image processing</li>
+                        <li>Social features with user profiles and connections</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Achieved 99.9% crash-free sessions by implementing robust error handling and optimizing memory usage for low-end devices.</p>
+                `
+            },
+            project4: {
+                title: "Cloud Architecture Platform",
+                tech: "AWS • Docker • Kubernetes • Terraform",
+                description: `
+                    <p>Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD pipelines and monitoring.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Auto-scaling microservices with load balancing</li>
+                        <li>Automated deployment with zero-downtime releases</li>
+                        <li>Comprehensive monitoring and alerting system</li>
+                        <li>Infrastructure as Code with version control</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Reduced deployment time by 80% and achieved 99.99% uptime through implementing blue-green deployments and comprehensive health checks.</p>
+                `
+            }
+        };
+
+        function openModal(projectId) {
+            const modal = document.getElementById('projectModal');
+            const project = projectData[projectId];
+            
+            if (modal && project) {
+                const modalTitle = document.getElementById('modalTitle');
+                const modalTech = document.getElementById('modalTech');
+                const modalDescription = document.getElementById('modalDescription');
+                
+                if (modalTitle) modalTitle.textContent = project.title;
+                if (modalTech) modalTech.textContent = project.tech;
+                if (modalDescription) modalDescription.innerHTML = project.description;
+                
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('projectModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Modal event listeners
+        const projectModal = document.getElementById('projectModal');
+        if (projectModal) {
+            projectModal.addEventListener('click', (e) => {
+                if (e.target.id === 'projectModal') {
+                    closeModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Intersection Observer
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe fade-in elements
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

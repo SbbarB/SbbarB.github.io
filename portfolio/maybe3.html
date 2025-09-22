@@ -1,0 +1,2056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Name - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --accent-primary: #6495ED;
+            --accent-secondary: #FFB6C1;
+            --mesh-color: #000000;
+            --mesh-hover: #c0c0c0;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Simple Mesh Canvas */
+        .mesh-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Enhanced Cursor Trail */
+        .cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.8;
+            transition: none;
+            will-change: transform;
+        }
+
+        .cursor-dot {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9997;
+            opacity: 0.6;
+            will-change: transform;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Loading Animation */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: all 0.8s ease;
+        }
+
+        .loader-text {
+            font-size: 1.4rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: loaderTextReveal 1s ease-out 0.5s forwards, colorCycle 4s ease-in-out infinite;
+        }
+
+        @keyframes loaderTextReveal {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes colorCycle {
+            0%, 100% { color: var(--accent-primary); }
+            50% { color: var(--accent-secondary); }
+        }
+
+        .loader-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--accent-primary), 
+                var(--accent-secondary), 
+                transparent);
+            animation: loaderProgress 2s ease-in-out forwards;
+        }
+
+        @keyframes loaderProgress {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* Enhanced 3D Electron Model */
+        .electron-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            perspective: 1500px;
+            z-index: 200;
+            transition: opacity 2s ease-out, transform 2s ease-out;
+            width: 500px;
+            height: 500px;
+        }
+
+        .electron-model {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: atomRotate3D 25s linear infinite;
+            transition: all 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes atomRotate3D {
+            0% { transform: rotateY(0deg) rotateX(0deg) rotateZ(0deg); }
+            25% { transform: rotateY(90deg) rotateX(30deg) rotateZ(15deg); }
+            50% { transform: rotateY(180deg) rotateX(60deg) rotateZ(30deg); }
+            75% { transform: rotateY(270deg) rotateX(30deg) rotateZ(45deg); }
+            100% { transform: rotateY(360deg) rotateX(0deg) rotateZ(60deg); }
+        }
+
+        /* Enhanced Nucleus */
+        .nucleus {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, 
+                var(--accent-primary), 
+                var(--accent-secondary), 
+                #333);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 40px var(--accent-primary),
+                inset 0 0 20px rgba(255, 255, 255, 0.3);
+            animation: nucleusPulse 4s ease-in-out infinite;
+            z-index: 100;
+        }
+
+        @keyframes nucleusPulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                box-shadow: 0 0 40px var(--accent-primary), inset 0 0 20px rgba(255, 255, 255, 0.3);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.2); 
+                box-shadow: 0 0 60px var(--accent-primary), inset 0 0 30px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* Black & Grey Electron Rings - Balloon-like */
+        .electron-ring {
+            position: absolute;
+            border: 2px solid rgba(80, 80, 80, 0.6);
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            transition: all 1s ease;
+            box-shadow: 0 0 10px rgba(40, 40, 40, 0.3);
+        }
+
+        /* Balloon-like Ring configurations */
+        .hydrogen .ring-1 {
+            width: 200px; height: 200px; top: 150px; left: 150px;
+            animation: balloonFloat1 12s ease-in-out infinite;
+            border-color: rgba(60, 60, 60, 0.7);
+        }
+
+        .helium .ring-1 {
+            width: 220px; height: 220px; top: 140px; left: 140px;
+            animation: balloonFloat1 14s ease-in-out infinite;
+            border-color: rgba(60, 60, 60, 0.7);
+        }
+
+        .lithium .ring-1 {
+            width: 180px; height: 180px; top: 160px; left: 160px;
+            animation: balloonFloat1 10s ease-in-out infinite;
+            border-color: rgba(60, 60, 60, 0.7);
+        }
+        .lithium .ring-2 {
+            width: 280px; height: 280px; top: 110px; left: 110px;
+            transform: rotateY(60deg) rotateX(30deg);
+            animation: balloonFloat2 16s ease-in-out infinite;
+            border-color: rgba(100, 100, 100, 0.6);
+        }
+
+        .carbon .ring-1 {
+            width: 160px; height: 160px; top: 170px; left: 170px;
+            animation: balloonFloat1 8s ease-in-out infinite;
+            border-color: rgba(60, 60, 60, 0.7);
+        }
+        .carbon .ring-2 {
+            width: 300px; height: 300px; top: 100px; left: 100px;
+            transform: rotateY(60deg) rotateX(30deg);
+            animation: balloonFloat2 18s ease-in-out infinite;
+            border-color: rgba(100, 100, 100, 0.6);
+        }
+
+        /* Simplified 2D Movement Animations */
+        @keyframes balloonFloat1 {
+            0%, 100% { 
+                transform: rotateZ(0deg) scale(1) translateY(0px);
+                opacity: 0.7;
+            }
+            25% { 
+                transform: rotateZ(90deg) scale(1.05) translateY(-8px);
+                opacity: 0.9;
+            }
+            50% { 
+                transform: rotateZ(180deg) scale(0.95) translateY(5px);
+                opacity: 0.6;
+            }
+            75% { 
+                transform: rotateZ(270deg) scale(1.1) translateY(-12px);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes balloonFloat2 {
+            0%, 100% { 
+                transform: rotateY(60deg) rotateX(30deg) rotateZ(0deg) scale(1) translateY(0px);
+                opacity: 0.6;
+            }
+            20% { 
+                transform: rotateY(60deg) rotateX(30deg) rotateZ(-72deg) scale(1.08) translateY(-10px);
+                opacity: 0.8;
+            }
+            40% { 
+                transform: rotateY(60deg) rotateX(30deg) rotateZ(-144deg) scale(0.92) translateY(8px);
+                opacity: 0.5;
+            }
+            60% { 
+                transform: rotateY(60deg) rotateX(30deg) rotateZ(-216deg) scale(1.12) translateY(-15px);
+                opacity: 0.9;
+            }
+            80% { 
+                transform: rotateY(60deg) rotateX(30deg) rotateZ(-288deg) scale(0.88) translateY(12px);
+                opacity: 0.4;
+            }
+        }
+
+        /* Black & Grey 3D Electrons */
+        .electron {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(80, 80, 80, 0.9), 
+                rgba(40, 40, 40, 0.8), 
+                rgba(20, 20, 20, 0.7));
+            border-radius: 50%;
+            box-shadow: 
+                0 0 15px rgba(60, 60, 60, 0.4),
+                inset 0 0 6px rgba(120, 120, 120, 0.3);
+            transition: all 1s ease;
+        }
+
+        /* Electron positioning for different elements */
+        .hydrogen .electron-1 {
+            top: -7px; left: 93px;
+            animation: electron1Orbit 6s linear infinite;
+        }
+
+        .helium .electron-1 {
+            top: -7px; left: 103px;
+            animation: electron1Orbit 7s linear infinite;
+        }
+        .helium .electron-2 {
+            top: 213px; left: 103px;
+            animation: electron2Orbit 7s linear infinite reverse;
+        }
+
+        .lithium .electron-1 {
+            top: -7px; left: 93px;
+            animation: electron1Orbit 6s linear infinite;
+        }
+        .lithium .electron-2 {
+            top: 213px; left: 93px;
+            animation: electron2Orbit 6s linear infinite reverse;
+        }
+        .lithium .electron-3 {
+            top: 133px; left: -7px;
+            animation: electron3Orbit 10s linear infinite;
+        }
+
+        .carbon .electron-1 {
+            top: -7px; left: 83px;
+            animation: electron1Orbit 5s linear infinite;
+        }
+        .carbon .electron-2 {
+            top: 173px; left: 83px;
+            animation: electron2Orbit 5s linear infinite reverse;
+        }
+        .carbon .electron-3 {
+            top: 143px; left: -7px;
+            animation: electron3Orbit 12s linear infinite;
+        }
+        .carbon .electron-4 {
+            top: 143px; left: 293px;
+            animation: electron4Orbit 12s linear infinite reverse;
+        }
+
+        @keyframes electron1Orbit {
+            0% { transform: rotate(0deg) translateX(100px) rotate(0deg); }
+            100% { transform: rotate(360deg) translateX(100px) rotate(-360deg); }
+        }
+
+        @keyframes electron2Orbit {
+            0% { transform: rotate(0deg) translateX(100px) rotate(0deg); }
+            100% { transform: rotate(-360deg) translateX(100px) rotate(360deg); }
+        }
+
+        @keyframes electron3Orbit {
+            0% { transform: rotate(0deg) translateX(140px) rotate(0deg); }
+            100% { transform: rotate(360deg) translateX(140px) rotate(-360deg); }
+        }
+
+        @keyframes electron4Orbit {
+            0% { transform: rotate(0deg) translateX(140px) rotate(0deg); }
+            100% { transform: rotate(-360deg) translateX(140px) rotate(360deg); }
+        }
+
+        /* Simple 2D Orbital Cloud Movement */
+        .orbital-cloud {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            transform-style: preserve-3d;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+            top: 0;
+            left: 0;
+            animation: simpleCloudFloat 20s ease-in-out infinite;
+        }
+
+        .orbital-cloud.active {
+            opacity: 1;
+        }
+
+        @keyframes simpleCloudFloat {
+            0%, 100% { 
+                transform: rotateY(0deg) rotateX(5deg) translateY(0px);
+            }
+            25% { 
+                transform: rotateY(90deg) rotateX(15deg) translateY(-20px);
+            }
+            50% { 
+                transform: rotateY(180deg) rotateX(-5deg) translateY(10px);
+            }
+            75% { 
+                transform: rotateY(270deg) rotateX(20deg) translateY(-15px);
+            }
+        }
+
+        /* True 3D Balloon Shapes with actual geometry */
+        .orbital-density {
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: gentleBob 15s ease-in-out infinite;
+        }
+
+        /* Create actual 3D layers for depth */
+        .orbital-density::before,
+        .orbital-density::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes gentleBob {
+            0%, 100% { 
+                transform: translateY(0px) scale(1) rotateX(5deg) rotateY(10deg);
+                opacity: 0.8;
+            }
+            25% { 
+                transform: translateY(-10px) scale(1.05) rotateX(15deg) rotateY(25deg);
+                opacity: 0.9;
+            }
+            50% { 
+                transform: translateY(8px) scale(0.95) rotateX(-10deg) rotateY(40deg);
+                opacity: 0.7;
+            }
+            75% { 
+                transform: translateY(-15px) scale(1.08) rotateX(20deg) rotateY(55deg);
+                opacity: 0.95;
+            }
+        }
+
+        /* S-orbital 3D Spheres - Built with actual 3D layers */
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(1) {
+            width: 280px; height: 280px;
+            top: 110px; left: 110px;
+            background: radial-gradient(circle at 40% 40%, 
+                rgba(120, 120, 120, 0.8) 0%, 
+                rgba(80, 80, 80, 0.6) 40%, 
+                rgba(40, 40, 40, 0.4) 70%, 
+                transparent 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 40px rgba(60, 60, 60, 0.4),
+                inset -30px -30px 60px rgba(20, 20, 20, 0.6);
+            animation-delay: 0s;
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(1)::before {
+            top: 20px; left: 20px;
+            width: 240px; height: 240px;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(140, 140, 140, 0.7) 0%, 
+                rgba(90, 90, 90, 0.4) 50%, 
+                transparent 80%);
+            transform: translateZ(40px) rotateX(30deg);
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(1)::after {
+            top: 40px; left: 40px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle at 25% 25%, 
+                rgba(100, 100, 100, 0.5) 0%, 
+                rgba(50, 50, 50, 0.3) 60%, 
+                transparent 90%);
+            transform: translateZ(-40px) rotateY(45deg);
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(2) {
+            width: 220px; height: 220px;
+            top: 140px; left: 140px;
+            background: radial-gradient(circle at 35% 35%, 
+                rgba(100, 100, 100, 0.7) 0%, 
+                rgba(60, 60, 60, 0.5) 50%, 
+                rgba(30, 30, 30, 0.3) 80%, 
+                transparent 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 30px rgba(50, 50, 50, 0.3),
+                inset -20px -20px 40px rgba(15, 15, 15, 0.5);
+            animation-delay: 5s;
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(2)::before {
+            top: 15px; left: 15px;
+            width: 190px; height: 190px;
+            background: radial-gradient(circle at 28% 28%, 
+                rgba(120, 120, 120, 0.6) 0%, 
+                rgba(70, 70, 70, 0.3) 60%, 
+                transparent 85%);
+            transform: translateZ(30px) rotateX(45deg) rotateY(30deg);
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(2)::after {
+            top: 30px; left: 30px;
+            width: 160px; height: 160px;
+            background: radial-gradient(circle at 22% 22%, 
+                rgba(80, 80, 80, 0.4) 0%, 
+                rgba(40, 40, 40, 0.2) 70%, 
+                transparent 95%);
+            transform: translateZ(-30px) rotateY(60deg);
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(3) {
+            width: 180px; height: 180px;
+            top: 160px; left: 160px;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(90, 90, 90, 0.6) 0%, 
+                rgba(50, 50, 50, 0.4) 60%, 
+                rgba(20, 20, 20, 0.2) 90%, 
+                transparent 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 25px rgba(40, 40, 40, 0.2),
+                inset -15px -15px 30px rgba(10, 10, 10, 0.4);
+            animation-delay: 10s;
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(3)::before {
+            top: 12px; left: 12px;
+            width: 156px; height: 156px;
+            background: radial-gradient(circle at 25% 25%, 
+                rgba(110, 110, 110, 0.5) 0%, 
+                rgba(60, 60, 60, 0.2) 70%, 
+                transparent 90%);
+            transform: translateZ(25px) rotateX(60deg);
+        }
+
+        .electron-model.s-orbital .orbital-cloud .orbital-density:nth-child(3)::after {
+            top: 24px; left: 24px;
+            width: 132px; height: 132px;
+            background: radial-gradient(circle at 20% 20%, 
+                rgba(70, 70, 70, 0.3) 0%, 
+                rgba(30, 30, 30, 0.15) 80%, 
+                transparent 100%);
+            transform: translateZ(-25px) rotateY(75deg);
+        }
+
+        /* P-orbital 3D Dumbbells - Built with actual 3D geometry */
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(1) {
+            width: 110px; height: 320px;
+            top: 90px; left: 195px;
+            background: linear-gradient(to bottom, 
+                rgba(100, 100, 100, 0.8) 0% 40%,
+                transparent 40% 60%,
+                rgba(80, 80, 80, 0.8) 60% 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 -60px 30px rgba(60, 60, 60, 0.4),
+                0 60px 30px rgba(40, 40, 40, 0.4),
+                inset -10px 0 20px rgba(20, 20, 20, 0.5);
+            animation-delay: 0s;
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(1)::before {
+            top: 20px; left: 10px;
+            width: 90px; height: 140px;
+            background: radial-gradient(ellipse at 30% 50%, 
+                rgba(120, 120, 120, 0.7) 0%, 
+                rgba(70, 70, 70, 0.4) 60%, 
+                transparent 90%);
+            border-radius: 50%;
+            transform: translateZ(35px) rotateX(45deg);
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(1)::after {
+            bottom: 20px; left: 10px;
+            width: 90px; height: 140px;
+            background: radial-gradient(ellipse at 30% 50%, 
+                rgba(90, 90, 90, 0.6) 0%, 
+                rgba(50, 50, 50, 0.3) 60%, 
+                transparent 90%);
+            border-radius: 50%;
+            transform: translateZ(-35px) rotateX(-45deg);
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(2) {
+            width: 320px; height: 110px;
+            top: 195px; left: 90px;
+            background: linear-gradient(to right, 
+                rgba(90, 90, 90, 0.7) 0% 40%,
+                transparent 40% 60%,
+                rgba(70, 70, 70, 0.7) 60% 100%);
+            border-radius: 50%;
+            box-shadow: 
+                -60px 0 30px rgba(50, 50, 50, 0.3),
+                60px 0 30px rgba(30, 30, 30, 0.3),
+                inset 0 -10px 20px rgba(15, 15, 15, 0.4);
+            animation-delay: 7s;
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(2)::before {
+            top: 10px; left: 20px;
+            width: 140px; height: 90px;
+            background: radial-gradient(ellipse at 50% 30%, 
+                rgba(110, 110, 110, 0.6) 0%, 
+                rgba(60, 60, 60, 0.3) 60%, 
+                transparent 90%);
+            border-radius: 50%;
+            transform: translateZ(30px) rotateY(45deg);
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(2)::after {
+            top: 10px; right: 20px;
+            width: 140px; height: 90px;
+            background: radial-gradient(ellipse at 50% 30%, 
+                rgba(80, 80, 80, 0.5) 0%, 
+                rgba(40, 40, 40, 0.2) 60%, 
+                transparent 90%);
+            border-radius: 50%;
+            transform: translateZ(-30px) rotateY(-45deg);
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(3) {
+            width: 90px; height: 280px;
+            top: 110px; left: 205px;
+            background: linear-gradient(to bottom, 
+                rgba(80, 80, 80, 0.6) 0% 40%,
+                transparent 40% 60%,
+                rgba(60, 60, 60, 0.6) 60% 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 20px rgba(30, 30, 30, 0.2),
+                inset -8px 0 15px rgba(10, 10, 10, 0.3);
+            animation-delay: 14s;
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(3)::before {
+            top: 15px; left: 8px;
+            width: 74px; height: 120px;
+            background: radial-gradient(ellipse at 25% 50%, 
+                rgba(100, 100, 100, 0.5) 0%, 
+                rgba(50, 50, 50, 0.2) 70%, 
+                transparent 95%);
+            border-radius: 50%;
+            transform: translateZ(25px) rotateX(30deg) rotateY(30deg);
+        }
+
+        .electron-model.p-orbital .orbital-cloud .orbital-density:nth-child(3)::after {
+            bottom: 15px; left: 8px;
+            width: 74px; height: 120px;
+            background: radial-gradient(ellipse at 25% 50%, 
+                rgba(70, 70, 70, 0.4) 0%, 
+                rgba(30, 30, 30, 0.15) 70%, 
+                transparent 95%);
+            border-radius: 50%;
+            transform: translateZ(-25px) rotateX(-30deg) rotateY(-30deg);
+        }
+
+        /* Hide Bohr model when orbitals are displayed */
+        .electron-model.s-orbital .electron-ring,
+        .electron-model.s-orbital .electron,
+        .electron-model.p-orbital .electron-ring,
+        .electron-model.p-orbital .electron {
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .electron-model.s-orbital .nucleus,
+        .electron-model.p-orbital .nucleus {
+            opacity: 1;
+            z-index: 999;
+        }
+
+        .electron-container.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.6);
+            pointer-events: none;
+        }
+
+        /* Enhanced Combined Atomic Model Animation */
+        .atomic-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            z-index: 50;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .atomic-model {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            animation: atomicRotate 40s linear infinite;
+            transition: all 1s ease;
+        }
+
+        @keyframes atomicRotate {
+            0% { transform: rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateY(360deg) rotateZ(360deg); }
+        }
+
+        /* Central Nucleus */
+        .atom-nucleus {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: radial-gradient(circle at 30% 30%, 
+                #aaaaaa, 
+                #666666, 
+                #333333);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 25px rgba(140, 140, 140, 0.4),
+                inset 0 0 10px rgba(200, 200, 200, 0.3);
+            z-index: 10;
+        }
+
+        /* Enhanced Electron Shell Rings */
+        .electron-shell {
+            position: absolute;
+            border: 3px solid rgba(160, 160, 160, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: opacity 1s ease;
+        }
+
+        .shell-1 {
+            width: 120px;
+            height: 120px;
+        }
+
+        .shell-2 {
+            width: 200px;
+            height: 200px;
+        }
+
+        .shell-3 {
+            width: 280px;
+            height: 280px;
+        }
+
+        .shell-4 {
+            width: 360px;
+            height: 360px;
+        }
+
+        /* Enhanced Elliptical Orbital Paths */
+        .orbital-path {
+            position: absolute;
+            border: 2px solid rgba(130, 130, 130, 0.25);
+            top: 50%;
+            left: 50%;
+            transform-origin: center;
+            transition: opacity 1s ease;
+        }
+
+        .orbit-1 {
+            width: 160px;
+            height: 80px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotateZ(0deg) rotateX(15deg);
+            animation: gyroOrbit1 18s linear infinite;
+        }
+
+        .orbit-2 {
+            width: 240px;
+            height: 120px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotateZ(60deg) rotateY(30deg);
+            animation: gyroOrbit2 22s linear infinite reverse;
+        }
+
+        .orbit-3 {
+            width: 320px;
+            height: 160px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotateZ(120deg) rotateX(-20deg);
+            animation: gyroOrbit3 26s linear infinite;
+        }
+
+        .orbit-4 {
+            width: 400px;
+            height: 200px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotateZ(180deg) rotateY(-45deg);
+            animation: gyroOrbit4 30s linear infinite reverse;
+        }
+
+        @keyframes gyroOrbit1 {
+            0% { transform: translate(-50%, -50%) rotateZ(0deg) rotateX(15deg) rotateY(0deg); }
+            100% { transform: translate(-50%, -50%) rotateZ(360deg) rotateX(15deg) rotateY(360deg); }
+        }
+
+        @keyframes gyroOrbit2 {
+            0% { transform: translate(-50%, -50%) rotateZ(60deg) rotateY(30deg) rotateX(0deg); }
+            100% { transform: translate(-50%, -50%) rotateZ(-300deg) rotateY(-330deg) rotateX(-360deg); }
+        }
+
+        @keyframes gyroOrbit3 {
+            0% { transform: translate(-50%, -50%) rotateZ(120deg) rotateX(-20deg) rotateY(0deg); }
+            100% { transform: translate(-50%, -50%) rotateZ(480deg) rotateX(-20deg) rotateY(360deg); }
+        }
+
+        @keyframes gyroOrbit4 {
+            0% { transform: translate(-50%, -50%) rotateZ(180deg) rotateY(-45deg) rotateX(0deg); }
+            100% { transform: translate(-50%, -50%) rotateZ(-180deg) rotateY(315deg) rotateX(-360deg); }
+        }
+
+        /* Enhanced Orbiting Electrons */
+        .electron-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle at 30% 30%, 
+                #bbbbbb, 
+                #777777, 
+                #444444);
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(160, 160, 160, 0.6);
+            transition: opacity 1s ease;
+        }
+
+        /* Orbiting electrons following the orbital paths */
+        .orbit-electron-1 {
+            top: 290px; left: 290px;
+            animation: electronPath1 18s linear infinite;
+        }
+
+        .orbit-electron-2 {
+            top: 290px; left: 290px;
+            animation: electronPath2 22s linear infinite;
+        }
+
+        .orbit-electron-3 {
+            top: 290px; left: 290px;
+            animation: electronPath3 26s linear infinite;
+        }
+
+        .orbit-electron-4 {
+            top: 290px; left: 290px;
+            animation: electronPath4 30s linear infinite;
+        }
+
+        @keyframes electronPath1 {
+            0% { transform: rotateZ(0deg) translateX(80px) rotateZ(0deg); }
+            100% { transform: rotateZ(360deg) translateX(80px) rotateZ(-360deg); }
+        }
+
+        @keyframes electronPath2 {
+            0% { transform: rotateZ(60deg) translateX(120px) rotateZ(-60deg); }
+            100% { transform: rotateZ(-300deg) translateX(120px) rotateZ(360deg); }
+        }
+
+        @keyframes electronPath3 {
+            0% { transform: rotateZ(120deg) translateX(160px) rotateZ(-120deg); }
+            100% { transform: rotateZ(480deg) translateX(160px) rotateZ(-480deg); }
+        }
+
+        @keyframes electronPath4 {
+            0% { transform: rotateZ(180deg) translateX(200px) rotateZ(-180deg); }
+            100% { transform: rotateZ(-180deg) translateX(200px) rotateZ(180deg); }
+        }
+
+        /* Hover State - Orbital Cloud Transformation */
+        .atomic-container:hover .electron-shell,
+        .atomic-container:hover .orbital-path,
+        .atomic-container:hover .electron-particle {
+            opacity: 0;
+        }
+
+        .atomic-container:hover .atomic-model {
+            animation: quantumSpin 8s linear infinite;
+        }
+
+        @keyframes quantumSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
+        }
+
+        /* Quantum Orbital Clouds */
+        .quantum-cloud {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 1s ease;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .atomic-container:hover .quantum-cloud {
+            opacity: 1;
+        }
+
+        .orbital-lobe {
+            position: absolute;
+            background: radial-gradient(ellipse at center, 
+                rgba(180, 180, 180, 0.4) 0%, 
+                rgba(120, 120, 120, 0.3) 40%, 
+                rgba(80, 80, 80, 0.2) 70%, 
+                transparent 100%);
+            border-radius: 50%;
+            animation: lobeFloat 6s ease-in-out infinite;
+        }
+
+        /* P-orbital lobes */
+        .p-orbital-x .lobe-1 {
+            width: 80px; height: 200px;
+            top: -100px; left: -40px;
+            border-radius: 40px;
+            animation-delay: 0s;
+        }
+
+        .p-orbital-x .lobe-2 {
+            width: 80px; height: 200px;
+            top: -100px; right: -40px;
+            border-radius: 40px;
+            animation-delay: 1s;
+        }
+
+        .p-orbital-y .lobe-1 {
+            width: 200px; height: 80px;
+            top: -40px; left: -100px;
+            border-radius: 40px;
+            animation-delay: 2s;
+        }
+
+        .p-orbital-y .lobe-2 {
+            width: 200px; height: 80px;
+            bottom: -40px; left: -100px;
+            border-radius: 40px;
+            animation-delay: 3s;
+        }
+
+        .p-orbital-z .lobe-1 {
+            width: 120px; height: 120px;
+            top: -120px; left: -60px;
+            animation-delay: 4s;
+        }
+
+        .p-orbital-z .lobe-2 {
+            width: 120px; height: 120px;
+            bottom: -120px; left: -60px;
+            animation-delay: 5s;
+        }
+
+        @keyframes lobeFloat {
+            0%, 100% { 
+                transform: scale(1) rotateX(0deg) rotateY(0deg);
+                opacity: 0.4;
+            }
+            50% { 
+                transform: scale(1.2) rotateX(180deg) rotateY(90deg);
+                opacity: 0.7;
+            }
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(100, 149, 237, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.15) 0%, transparent 60%);
+            opacity: 0;
+            animation: heroGlow 3s ease-out 1s forwards;
+        }
+
+        @keyframes heroGlow {
+            0% { 
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 250;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: heroReveal 2s ease-out 0.5s forwards;
+            position: relative;
+        }
+
+        @keyframes heroReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(4rem, 10vw, 10rem);
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, 
+                var(--text-primary) 0%, 
+                var(--accent-primary) 50%, 
+                var(--accent-secondary) 100%);
+            background-size: 300% 300%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            overflow: hidden;
+            animation: gradientShift 6s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero .subtitle {
+            font-size: 1.6rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: subtitleReveal 1.5s ease-out 1.5s forwards;
+        }
+
+        @keyframes subtitleReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Projects Section */
+        .projects {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            margin-top: -5rem;
+            margin-bottom: 4rem;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-primary);
+            box-shadow: 
+                0 20px 40px rgba(100, 149, 237, 0.2),
+                0 0 20px rgba(255, 182, 193, 0.1);
+        }
+
+        .project-image {
+            height: 200px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-image::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, 
+                var(--accent-primary) 0%, 
+                var(--accent-secondary) 50%, 
+                transparent 100%);
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: projectPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes projectPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .project-content {
+            padding: 1.5rem;
+        }
+
+        .project-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .project-tech {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .project-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .project-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .project-link {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .project-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: white;
+            border-color: var(--accent-primary);
+            box-shadow: 0 5px 15px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Modal for expanded project view */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .modal-image {
+            height: 300px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 6rem 2rem;
+            text-align: center;
+            background: rgba(248, 248, 248, 0.9);
+            position: relative;
+            z-index: 100;
+            margin-top: 4rem;
+        }
+
+        .contact-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: white;
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .contact-links {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cursor-trail, .cursor-dot {
+                display: none;
+            }
+
+            .electron-container {
+                width: 400px;
+                height: 400px;
+            }
+        }
+
+        /* Intersection Observer animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Simple Mesh Canvas -->
+    <canvas class="mesh-canvas" id="meshCanvas"></canvas>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-text">Initializing Portfolio...</div>
+        <div class="loader-progress"></div>
+    </div>
+
+    <!-- Enhanced Cursor Trail -->
+    <div class="cursor-trail" id="cursorTrail1"></div>
+    <div class="cursor-trail" id="cursorTrail2"></div>
+    <div class="cursor-trail" id="cursorTrail3"></div>
+    
+    <!-- Cursor dot trail -->
+    <div class="cursor-dot" id="dot1"></div>
+    <div class="cursor-dot" id="dot2"></div>
+    <div class="cursor-dot" id="dot3"></div>
+    <div class="cursor-dot" id="dot4"></div>
+    <div class="cursor-dot" id="dot5"></div>
+    <div class="cursor-dot" id="dot6"></div>
+    <div class="cursor-dot" id="dot7"></div>
+    <div class="cursor-dot" id="dot8"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">Your Name</div>
+            <ul class="nav-links">
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <!-- Enhanced Combined Atomic Model Animation -->
+        <div class="atomic-container">
+            <div class="atomic-model">
+                <div class="atom-nucleus"></div>
+                
+                <!-- Electron Shell Rings -->
+                <div class="electron-shell shell-1"></div>
+                <div class="electron-shell shell-2"></div>
+                <div class="electron-shell shell-3"></div>
+                <div class="electron-shell shell-4"></div>
+                
+                <!-- Enhanced Elliptical Orbital Paths -->
+                <div class="orbital-path orbit-1"></div>
+                <div class="orbital-path orbit-2"></div>
+                <div class="orbital-path orbit-3"></div>
+                <div class="orbital-path orbit-4"></div>
+                
+                <!-- Enhanced Orbiting Electrons -->
+                <div class="electron-particle orbit-electron-1"></div>
+                <div class="electron-particle orbit-electron-2"></div>
+                <div class="electron-particle orbit-electron-3"></div>
+                <div class="electron-particle orbit-electron-4"></div>
+                
+                <!-- Quantum Orbital Clouds (appears on hover) -->
+                <div class="quantum-cloud p-orbital-x">
+                    <div class="orbital-lobe lobe-1"></div>
+                    <div class="orbital-lobe lobe-2"></div>
+                </div>
+                <div class="quantum-cloud p-orbital-y">
+                    <div class="orbital-lobe lobe-1"></div>
+                    <div class="orbital-lobe lobe-2"></div>
+                </div>
+                <div class="quantum-cloud p-orbital-z">
+                    <div class="orbital-lobe lobe-1"></div>
+                    <div class="orbital-lobe lobe-2"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="hero-content">
+            <h1>Developer</h1>
+            <p class="subtitle">Crafting digital experiences with code</p>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section class="projects" id="projects">
+        <h2 class="section-title">Selected Work</h2>
+        <div class="projects-grid">
+            <!-- Project 1 -->
+            <div class="project-card fade-in" onclick="openModal('project1')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Project Alpha</h3>
+                    <p class="project-tech">React • Node.js • MongoDB</p>
+                    <p class="project-description">A full-stack web application that demonstrates modern development practices and clean architecture.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 2 -->
+            <div class="project-card fade-in" onclick="openModal('project2')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Neural Network Viz</h3>
+                    <p class="project-tech">Python • TensorFlow • D3.js</p>
+                    <p class="project-description">Interactive visualization tool for understanding deep learning architectures and training processes.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project-card fade-in" onclick="openModal('project3')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Mobile Innovation</h3>
+                    <p class="project-tech">React Native • Firebase • TypeScript</p>
+                    <p class="project-description">Cross-platform mobile application with real-time features and seamless user experience.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">App Store</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 4 -->
+            <div class="project-card fade-in" onclick="openModal('project4')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Cloud Architecture</h3>
+                    <p class="project-tech">AWS • Docker • Kubernetes</p>
+                    <p class="project-description">Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Documentation</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal for expanded project details -->
+    <div class="modal" id="projectModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-image" id="modalImage"></div>
+            <div class="modal-body">
+                <h3 id="modalTitle">Project Title</h3>
+                <p id="modalTech" class="project-tech">Technologies</p>
+                <div id="modalDescription">
+                    <p>Detailed project description goes here. This is where you can elaborate on the challenges, solutions, and technical details of your project.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Feature 1</li>
+                        <li>Feature 2</li>
+                        <li>Feature 3</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Description of challenges and how they were solved.</p>
+                </div>
+                <div class="project-links" id="modalLinks">
+                    <a href="#" class="project-link">Live Demo</a>
+                    <a href="#" class="project-link">GitHub</a>
+                    <a href="#" class="project-link">Case Study</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="contact-content">
+            <h2>Let's Build Something</h2>
+            <p class="subtitle">Ready to collaborate on your next project</p>
+            <div class="contact-links">
+                <a href="mailto:your.email@domain.com" class="contact-link">
+                    <span>Email</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span>LinkedIn</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script>
+
+
+        // Enhanced Grid Mesh System with improved scroll handling
+        class EnhancedGridMesh {
+            constructor() {
+                this.canvas = document.getElementById('meshCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.gridSize = 45;
+                this.influenceRadius = 150; // Increased for wider effect
+                this.isBreakingApart = false;
+                this.hasTriggeredBreak = false;
+                this.isReforming = false;
+                this.scrollOffset = 0;
+                this.lastScrollY = 0;
+                
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            init() {
+                this.resize();
+            }
+            
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+            }
+            
+            triggerBreakApart() {
+                if (!this.hasTriggeredBreak) {
+                    this.isBreakingApart = true;
+                    this.hasTriggeredBreak = true;
+                    this.isReforming = false;
+                }
+            }
+            
+            triggerReform() {
+                if (this.hasTriggeredBreak) {
+                    this.isReforming = true;
+                    this.isBreakingApart = false;
+                    
+                    setTimeout(() => {
+                        this.isReforming = false;
+                        this.hasTriggeredBreak = false;
+                    }, 2000);
+                }
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Smooth scroll-based opacity
+                const scrollPercent = Math.min(window.scrollY / (window.innerHeight * 0.8), 1);
+                let baseOpacity = 1 - (scrollPercent * 0.7);
+                
+                if (this.isBreakingApart) {
+                    baseOpacity *= Math.max(0, 1 - (scrollPercent * 1.5));
+                } else if (this.isReforming) {
+                    baseOpacity *= Math.min(1, (1 - scrollPercent) * 2);
+                }
+                
+                this.ctx.globalAlpha = Math.max(0, baseOpacity);
+                
+                // Draw enhanced grid with improved interaction
+                for (let x = 0; x <= this.width; x += this.gridSize) {
+                    for (let y = 0; y <= this.height; y += this.gridSize) {
+                        let lineX = x;
+                        let lineY = y;
+                        let color = '0, 0, 0';
+                        let opacity = 0.25;
+                        let lineWidth = 1;
+                        
+                        // Enhanced mouse interaction
+                        const dx = this.mouseX - x;
+                        const dy = this.mouseY - y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < this.influenceRadius && !this.isBreakingApart) {
+                            const force = (this.influenceRadius - distance) / this.influenceRadius;
+                            const pullStrength = force * force * 30; // Increased pull strength
+                            
+                            lineX = x + (dx / distance) * pullStrength;
+                            lineY = y + (dy / distance) * pullStrength;
+                            
+                            color = '192, 192, 192'; // Silver when influenced
+                            opacity = 0.4 + force * 0.6;
+                            lineWidth = 1 + force * 3;
+                        }
+                        
+                        this.ctx.strokeStyle = `rgba(${color}, ${opacity * baseOpacity})`;
+                        this.ctx.lineWidth = lineWidth;
+                        
+                        // Draw horizontal lines with improved smoothing
+                        if (x < this.width) {
+                            let nextX = x + this.gridSize;
+                            let nextY = y;
+                            
+                            const nextDx = this.mouseX - nextX;
+                            const nextDy = this.mouseY - nextY;
+                            const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+                            
+                            if (nextDistance < this.influenceRadius && !this.isBreakingApart) {
+                                const nextForce = (this.influenceRadius - nextDistance) / this.influenceRadius;
+                                const nextPull = nextForce * nextForce * 30;
+                                nextX = x + this.gridSize + (nextDx / nextDistance) * nextPull;
+                                nextY = y + (nextDy / nextDistance) * nextPull;
+                            }
+                            
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(lineX, lineY);
+                            this.ctx.lineTo(nextX, nextY);
+                            this.ctx.stroke();
+                        }
+                        
+                        // Draw vertical lines
+                        if (y < this.height) {
+                            let nextX = x;
+                            let nextY = y + this.gridSize;
+                            
+                            const nextDx = this.mouseX - nextX;
+                            const nextDy = this.mouseY - nextY;
+                            const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+                            
+                            if (nextDistance < this.influenceRadius && !this.isBreakingApart) {
+                                const nextForce = (this.influenceRadius - nextDistance) / this.influenceRadius;
+                                const nextPull = nextForce * nextForce * 30;
+                                nextX = x + (nextDx / nextDistance) * nextPull;
+                                nextY = y + this.gridSize + (nextDy / nextDistance) * nextPull;
+                            }
+                            
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(lineX, lineY);
+                            this.ctx.lineTo(nextX, nextY);
+                            this.ctx.stroke();
+                        }
+                        
+                        // Enhanced grid intersection points
+                        this.ctx.fillStyle = `rgba(${color}, ${opacity * 0.9 * baseOpacity})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(lineX, lineY, lineWidth * 0.8, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            animate() {
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.resize();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                // Improved scroll handling
+                let scrollTimeout;
+                window.addEventListener('scroll', () => {
+                    clearTimeout(scrollTimeout);
+                    
+                    const currentScrollY = window.scrollY;
+                    const scrollPercent = currentScrollY / (window.innerHeight * 0.5);
+                    
+                    if (scrollPercent > 0.4 && !this.hasTriggeredBreak) {
+                        this.triggerBreakApart();
+                    } else if (scrollPercent < 0.1 && this.hasTriggeredBreak) {
+                        this.triggerReform();
+                    }
+                    
+                    this.lastScrollY = currentScrollY;
+                    
+                    scrollTimeout = setTimeout(() => {
+                        // Stabilize after scroll ends
+                    }, 150);
+                });
+            }
+        }
+
+        // Initialize enhanced grid mesh
+        const gridMesh = new EnhancedGridMesh();
+
+        // Simple gyroscopic atom system
+        let electronModel = null;
+        let electronContainer = null;
+
+        // Enhanced cursor system
+        const trails = [
+            document.getElementById('cursorTrail1'),
+            document.getElementById('cursorTrail2'),
+            document.getElementById('cursorTrail3')
+        ];
+        const dots = [
+            document.getElementById('dot1'),
+            document.getElementById('dot2'),
+            document.getElementById('dot3'),
+            document.getElementById('dot4'),
+            document.getElementById('dot5'),
+            document.getElementById('dot6'),
+            document.getElementById('dot7'),
+            document.getElementById('dot8')
+        ];
+
+        let mouseX = 0, mouseY = 0;
+        let trail1X = 0, trail1Y = 0, trail2X = 0, trail2Y = 0, trail3X = 0, trail3Y = 0;
+        let dotPositions = Array(8).fill().map(() => ({x: 0, y: 0}));
+        let mouseHistory = Array(20).fill().map(() => ({x: 0, y: 0}));
+
+        // Mouse tracking
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            mouseHistory.unshift({x: mouseX, y: mouseY});
+            if (mouseHistory.length > 20) mouseHistory.pop();
+        });
+
+        // Initialize enhanced cursor colors
+        function initializeCursorColors() {
+            const trailColors = [
+                'var(--accent-primary)',
+                'var(--accent-secondary)', 
+                'var(--accent-primary)'
+            ];
+            
+            trails.forEach((trail, i) => {
+                if (trail) {
+                    trail.style.background = trailColors[i];
+                    trail.style.boxShadow = `0 0 15px ${trailColors[i]}`;
+                }
+            });
+
+            const dotColors = [
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)'
+            ];
+
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    dot.style.background = dotColors[i];
+                    dot.style.boxShadow = `0 0 8px ${dotColors[i]}`;
+                }
+            });
+        }
+
+        // Main animation loop
+        function animateCursor() {
+            // Smooth trail interpolation with enhanced responsiveness
+            trail1X += (mouseX - trail1X) * 0.25;
+            trail1Y += (mouseY - trail1Y) * 0.25;
+            trail2X += (trail1X - trail2X) * 0.18;
+            trail2Y += (trail1Y - trail2Y) * 0.18;
+            trail3X += (trail2X - trail3X) * 0.12;
+            trail3Y += (trail2Y - trail3Y) * 0.12;
+
+            // Update dot positions with smooth following
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    const delay = (i + 1) * 2;
+                    const targetIndex = Math.min(delay, mouseHistory.length - 1);
+                    const targetX = mouseHistory[targetIndex].x;
+                    const targetY = mouseHistory[targetIndex].y;
+                    
+                    dotPositions[i].x += (targetX - dotPositions[i].x) * 0.18;
+                    dotPositions[i].y += (targetY - dotPositions[i].y) * 0.18;
+                    
+                    dot.style.transform = `translate(${dotPositions[i].x - 2}px, ${dotPositions[i].y - 2}px)`;
+                }
+            });
+            
+            // Apply trail transforms
+            if (trails[0]) trails[0].style.transform = `translate(${trail1X - 4}px, ${trail1Y - 4}px)`;
+            if (trails[1]) trails[1].style.transform = `translate(${trail2X - 4}px, ${trail2Y - 4}px)`;
+            if (trails[2]) trails[2].style.transform = `translate(${trail3X - 4}px, ${trail3Y - 4}px)`;
+            
+            requestAnimationFrame(animateCursor);
+        }
+
+        // Enhanced hover effects
+        const hoverElements = document.querySelectorAll('a, button, .project-card');
+        hoverElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                trails.forEach(trail => {
+                    if (trail) trail.style.transform += ' scale(1.8)';
+                });
+            });
+            el.addEventListener('mouseleave', () => {
+                trails.forEach(trail => {
+                    if (trail) trail.style.transform = trail.style.transform.replace(' scale(1.8)', '');
+                });
+            });
+        });
+
+        // Electron model fade on scroll
+        function handleElectronModelScroll() {
+            if (!electronContainer) return;
+            const scrollY = window.scrollY;
+            const windowHeight = window.innerHeight;
+            
+            if (scrollY > windowHeight * 0.4) {
+                electronContainer.classList.add('fade-out');
+            } else {
+                electronContainer.classList.remove('fade-out');
+            }
+        }
+
+        // Initialize everything
+        function initializeElements() {
+            electronModel = document.getElementById('electronModel');
+            electronContainer = document.getElementById('electronContainer');
+            initializeCursorColors();
+        }
+
+        // DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeElements);
+        } else {
+            initializeElements();
+        }
+
+        // Start animations
+        animateCursor();
+
+        // Loading screen
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.transform = 'scale(0.95)';
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 800);
+                }
+            }, 2500);
+        });
+
+        // Scroll listeners
+        window.addEventListener('scroll', handleElectronModelScroll);
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Project modal functionality
+        const projectData = {
+            project1: {
+                title: "Project Alpha",
+                tech: "React • Node.js • MongoDB • GraphQL",
+                description: `
+                    <p>A comprehensive full-stack web application that showcases modern development practices and clean architecture patterns.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time data synchronization with WebSocket integration</li>
+                        <li>Advanced user authentication and authorization</li>
+                        <li>Responsive design with mobile-first approach</li>
+                        <li>RESTful API with GraphQL endpoint</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Implemented complex state management across multiple components while maintaining optimal performance through code splitting and lazy loading strategies.</p>
+                `
+            },
+            project2: {
+                title: "Neural Network Visualizer",
+                tech: "Python • TensorFlow • D3.js • Flask",
+                description: `
+                    <p>An interactive web application for visualizing and understanding deep learning architectures and training processes in real-time.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Dynamic network architecture visualization</li>
+                        <li>Real-time training metrics and loss curves</li>
+                        <li>Interactive layer exploration and parameter tuning</li>
+                        <li>Support for multiple neural network types</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Optimized rendering performance for large networks while maintaining smooth animations and real-time data streaming from the training backend.</p>
+                `
+            },
+            project3: {
+                title: "Mobile Innovation App",
+                tech: "React Native • Firebase • TypeScript • Redux",
+                description: `
+                    <p>Cross-platform mobile application with real-time features and seamless user experience across iOS and Android platforms.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time messaging and notifications</li>
+                        <li>Offline-first architecture with data synchronization</li>
+                        <li>Advanced camera integration and image processing</li>
+                        <li>Social features with user profiles and connections</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Achieved 99.9% crash-free sessions by implementing robust error handling and optimizing memory usage for low-end devices.</p>
+                `
+            },
+            project4: {
+                title: "Cloud Architecture Platform",
+                tech: "AWS • Docker • Kubernetes • Terraform",
+                description: `
+                    <p>Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD pipelines and monitoring.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Auto-scaling microservices with load balancing</li>
+                        <li>Automated deployment with zero-downtime releases</li>
+                        <li>Comprehensive monitoring and alerting system</li>
+                        <li>Infrastructure as Code with version control</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Reduced deployment time by 80% and achieved 99.99% uptime through implementing blue-green deployments and comprehensive health checks.</p>
+                `
+            }
+        };
+
+        function openModal(projectId) {
+            const modal = document.getElementById('projectModal');
+            const project = projectData[projectId];
+            
+            if (modal && project) {
+                document.getElementById('modalTitle').textContent = project.title;
+                document.getElementById('modalTech').textContent = project.tech;
+                document.getElementById('modalDescription').innerHTML = project.description;
+                
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('projectModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Modal event listeners
+        document.getElementById('projectModal').addEventListener('click', (e) => {
+            if (e.target.id === 'projectModal') {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Intersection Observer
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

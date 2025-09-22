@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Golf Course Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2d5a27 0%, #4a7c59 50%, #a8d8a8 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(to bottom, #87ceeb 0%, #98fb98 60%, #228b22 100%);
+            border-radius: 10px;
+        }
+        
+        #videoElement {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            transform: scaleX(-1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+        
+        #score {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        
+        #hole {
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            margin-bottom: 5px;
+        }
+        
+        #ballStatus {
+            font-size: 16px;
+            color: #FFD700;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            margin-bottom: 10px;
+        }
+        
+        #status {
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            max-width: 320px;
+        }
+        
+        #powerMeter {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid white;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        #powerFill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #4CAF50 0%, #FFEB3B 50%, #F44336 100%);
+            transition: height 0.1s ease;
+        }
+        
+        .hand-indicator {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ff6b6b, #ff8e8e);
+            border: 3px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+            z-index: 50;
+            transition: all 0.1s ease;
+        }
+        
+        .velocity-trail {
+            position: absolute;
+            width: 4px;
+            height: 25px;
+            background: linear-gradient(to top, transparent, #ffff00);
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 45;
+        }
+        
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 200;
+        }
+        
+        #startButton:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        #nextHoleButton, #resetBallButton {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #2196F3, #03DAC6);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 100;
+            display: none;
+        }
+        
+        #resetBallButton {
+            right: 180px;
+            background: linear-gradient(45deg, #FF9800, #FF5722);
+        }
+        
+        #celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            z-index: 150;
+            display: none;
+            animation: bounce 1s ease-in-out;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translate(-50%, -50%) translateY(0); }
+            40% { transform: translate(-50%, -50%) translateY(-30px); }
+            60% { transform: translate(-50%, -50%) translateY(-15px); }
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <video id="videoElement" autoplay muted playsinline></video>
+        
+        <div id="ui">
+            <div id="score">Strokes: 0</div>
+            <div id="hole">Hole: 1/9</div>
+            <div id="ballStatus">Ball on fairway</div>
+            <div id="status">Initializing camera...</div>
+        </div>
+        
+        <div id="powerMeter">
+            <div id="powerFill" style="height: 0%"></div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4169E1;"></div>
+                <span>Water Hazard</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #F4A460;"></div>
+                <span>Sand Trap</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #8B4513;"></div>
+                <span>Trees/Rocks</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #32CD32;"></div>
+                <span>Fairway</span>
+            </div>
+        </div>
+        
+        <div id="celebration">HOLE IN ONE!</div>
+        
+        <button id="startButton">Start Golf Game</button>
+        <button id="nextHoleButton">Next Hole</button>
+        <button id="resetBallButton">Reset Ball</button>
+    </div>
+
+    <!-- Matter.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.17.1/matter.min.js"></script>
+    
+    <!-- MediaPipe -->
+    <script type="module">
+        const { HandLandmarker, FilesetResolver } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0');
+        
+        // Game variables
+        let engine, render, world;
+        let handLandmarker;
+        let video;
+        let gameRunning = false;
+        let ball, hole, tee;
+        let boundaries = [];
+        let obstacles = [];
+        let hazards = [];
+        
+        // Golf game state
+        let currentHole = 1;
+        let totalStrokes = 0;
+        let holeStrokes = 0;
+        let ballInHole = false;
+        let gameComplete = false;
+        let ballStatus = "fairway";
+        let strokePenalty = 0;
+        
+        // Hand tracking with smoothing
+        let handPositions = [];
+        let handVelocities = [];
+        let handHistory = []; // Store last 5 positions for smoothing
+        let powerLevel = 0;
+        let lastHitTime = 0;
+        
+        // UI elements
+        const canvas = document.getElementById('gameCanvas');
+        const scoreElement = document.getElementById('score');
+        const holeElement = document.getElementById('hole');
+        const ballStatusElement = document.getElementById('ballStatus');
+        const statusElement = document.getElementById('status');
+        const startButton = document.getElementById('startButton');
+        const nextHoleButton = document.getElementById('nextHoleButton');
+        const resetBallButton = document.getElementById('resetBallButton');
+        const powerFill = document.getElementById('powerFill');
+        const celebrationElement = document.getElementById('celebration');
+        
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Golf hole configurations with realistic hazards
+        const holes = [
+            { 
+                teeX: 120, teeY: canvas.height - 120,
+                holeX: canvas.width - 150, holeY: canvas.height - 120,
+                obstacles: [],
+                sandTraps: [
+                    { x: canvas.width/2, y: canvas.height - 150, width: 120, height: 80 }
+                ],
+                waterHazards: [],
+                trees: []
+            },
+            {
+                teeX: 120, teeY: canvas.height - 120,
+                holeX: canvas.width - 150, holeY: 180,
+                obstacles: [],
+                sandTraps: [
+                    { x: canvas.width/3, y: canvas.height/2 + 50, width: 100, height: 100 },
+                    { x: 2*canvas.width/3, y: canvas.height/2 - 50, width: 80, height: 120 }
+                ],
+                waterHazards: [
+                    { x: canvas.width/2, y: canvas.height/2, width: 200, height: 60 }
+                ],
+                trees: [
+                    { x: canvas.width/4, y: canvas.height/3, radius: 25 },
+                    { x: 3*canvas.width/4, y: 2*canvas.height/3, radius: 30 }
+                ]
+            },
+            {
+                teeX: 120, teeY: canvas.height/2,
+                holeX: canvas.width - 150, holeY: canvas.height/2,
+                obstacles: [],
+                sandTraps: [
+                    { x: canvas.width/2 - 80, y: canvas.height/2, width: 160, height: 100 }
+                ],
+                waterHazards: [
+                    { x: canvas.width/3, y: canvas.height/4, width: 80, height: 150 },
+                    { x: 2*canvas.width/3, y: 3*canvas.height/4, width: 80, height: 150 }
+                ],
+                trees: [
+                    { x: canvas.width/2, y: canvas.height/4, radius: 20 },
+                    { x: canvas.width/2, y: 3*canvas.height/4, radius: 20 }
+                ]
+            },
+            {
+                teeX: canvas.width/2, teeY: canvas.height - 100,
+                holeX: canvas.width/2, holeY: 120,
+                obstacles: [],
+                sandTraps: [
+                    { x: canvas.width/2 - 120, y: canvas.height/2, width: 80, height: 80 },
+                    { x: canvas.width/2 + 120, y: canvas.height/2, width: 80, height: 80 }
+                ],
+                waterHazards: [
+                    { x: canvas.width/2, y: canvas.height/2 + 60, width: 180, height: 40 }
+                ],
+                trees: [
+                    { x: canvas.width/2 - 60, y: canvas.height/3, radius: 25 },
+                    { x: canvas.width/2 + 60, y: canvas.height/3, radius: 25 }
+                ]
+            },
+            {
+                teeX: 100, teeY: 100,
+                holeX: canvas.width - 100, holeY: canvas.height - 100,
+                obstacles: [],
+                sandTraps: [
+                    { x: canvas.width/3, y: canvas.height/3, width: 120, height: 120 },
+                    { x: 2*canvas.width/3, y: 2*canvas.height/3, width: 100, height: 100 }
+                ],
+                waterHazards: [
+                    { x: canvas.width/2, y: canvas.height/4, width: 150, height: 80 },
+                    { x: canvas.width/4, y: 3*canvas.height/4, width: 120, height: 60 }
+                ],
+                trees: [
+                    { x: canvas.width/2, y: canvas.height/2, radius: 35 },
+                    { x: 3*canvas.width/4, y: canvas.height/4, radius: 25 }
+                ]
+            }
+        ];
+        
+        // Initialize Matter.js
+        function initPhysics() {
+            engine = Matter.Engine.create();
+            world = engine.world;
+            engine.world.gravity.y = 0.5;
+            
+            render = Matter.Render.create({
+                element: document.getElementById('gameContainer'),
+                canvas: canvas,
+                engine: engine,
+                options: {
+                    width: canvas.width,
+                    height: canvas.height,
+                    wireframes: false,
+                    background: 'transparent',
+                    showAngleIndicator: false,
+                    showVelocity: false
+                }
+            });
+            
+            // Create invisible boundaries to keep ball on screen
+            boundaries = [
+                Matter.Bodies.rectangle(canvas.width / 2, canvas.height + 25, canvas.width, 50, { 
+                    isStatic: true,
+                    render: { fillStyle: 'transparent' },
+                    restitution: 0.3
+                }),
+                Matter.Bodies.rectangle(-25, canvas.height / 2, 50, canvas.height, { 
+                    isStatic: true,
+                    render: { fillStyle: 'transparent' },
+                    restitution: 0.3
+                }),
+                Matter.Bodies.rectangle(canvas.width + 25, canvas.height / 2, 50, canvas.height, { 
+                    isStatic: true,
+                    render: { fillStyle: 'transparent' },
+                    restitution: 0.3
+                }),
+                Matter.Bodies.rectangle(canvas.width / 2, -25, canvas.width, 50, { 
+                    isStatic: true,
+                    render: { fillStyle: 'transparent' },
+                    restitution: 0.3
+                })
+            ];
+            
+            Matter.World.add(world, boundaries);
+            
+            // Collision detection for hazards
+            Matter.Events.on(engine, 'beforeUpdate', () => {
+                if (ball && gameRunning) {
+                    checkBallTerrain();
+                    applyTerrainEffects();
+                }
+            });
+            
+            // Start physics engine
+            Matter.Engine.run(engine);
+            Matter.Render.run(render);
+        }
+        
+        // Check what terrain the ball is on
+        function checkBallTerrain() {
+            if (!ball) return;
+            
+            const ballX = ball.position.x;
+            const ballY = ball.position.y;
+            let newStatus = "fairway";
+            
+            // Check water hazards
+            const currentHole = holes[(currentHole - 1) % holes.length];
+            
+            // Check water hazards
+            for (let water of currentHole.waterHazards) {
+                if (ballX >= water.x - water.width/2 && ballX <= water.x + water.width/2 &&
+                    ballY >= water.y - water.height/2 && ballY <= water.y + water.height/2) {
+                    newStatus = "water";
+                    break;
+                }
+            }
+            
+            // Check sand traps
+            if (newStatus === "fairway") {
+                for (let sand of holeConfig.sandTraps) {
+                    if (ballX >= sand.x - sand.width/2 && ballX <= sand.x + sand.width/2 &&
+                        ballY >= sand.y - sand.height/2 && ballY <= sand.y + sand.height/2) {
+                        newStatus = "sand";
+                        break;
+                    }
+                }
+            }
+            
+            // Update status if changed
+            if (newStatus !== ballStatus) {
+                ballStatus = newStatus;
+                updateBallStatusDisplay();
+                
+                if (ballStatus === "water") {
+                    handleWaterHazard();
+                }
+            }
+        }
+        
+        // Apply terrain effects to ball physics
+        function applyTerrainEffects() {
+            if (!ball) return;
+            
+            switch (ballStatus) {
+                case "sand":
+                    // Increase friction in sand
+                    ball.frictionAir = 0.15;
+                    ball.friction = 1.2;
+                    break;
+                case "water":
+                    // Heavy damping in water
+                    ball.frictionAir = 0.8;
+                    Matter.Body.scale(ball, 0.95, 0.95); // Slow sinking effect
+                    break;
+                case "fairway":
+                default:
+                    // Normal fairway physics
+                    ball.frictionAir = 0.08;
+                    ball.friction = 0.6;
+                    break;
+            }
+        }
+        
+        // Handle water hazard penalty
+        function handleWaterHazard() {
+            setTimeout(() => {
+                if (ballStatus === "water") {
+                    strokePenalty++;
+                    totalStrokes++;
+                    scoreElement.textContent = `Strokes: ${totalStrokes} (+${strokePenalty} penalty)`;
+                    
+                    // Reset ball to last safe position (tee for now)
+                    const holeConfig = holes[(currentHole - 1) % holes.length];
+                    Matter.Body.setPosition(ball, { x: holeConfig.teeX, y: holeConfig.teeY - 15 });
+                    Matter.Body.setVelocity(ball, { x: 0, y: 0 });
+                    
+                    ballStatus = "fairway";
+                    updateBallStatusDisplay();
+                    
+                    statusElement.textContent = "Water hazard! Ball reset with penalty stroke.";
+                }
+            }, 1000);
+        }
+        
+        // Update ball status display
+        function updateBallStatusDisplay() {
+            const statusMessages = {
+                "fairway": "Ball on fairway",
+                "sand": "Ball in sand trap",
+                "water": "Ball in water hazard!"
+            };
+            
+            const statusColors = {
+                "fairway": "#32CD32",
+                "sand": "#F4A460", 
+                "water": "#4169E1"
+            };
+            
+            ballStatusElement.textContent = statusMessages[ballStatus];
+            ballStatusElement.style.color = statusColors[ballStatus];
+        }
+        
+        // Setup golf hole with hazards
+        function setupHole(holeNum) {
+            // Clear existing objects
+            if (ball) Matter.World.remove(world, ball);
+            if (hole) Matter.World.remove(world, hole);
+            if (tee) Matter.World.remove(world, tee);
+            obstacles.forEach(obs => Matter.World.remove(world, obs));
+            hazards.forEach(haz => Matter.World.remove(world, haz));
+            obstacles = [];
+            hazards = [];
+            
+            const holeConfig = holes[(holeNum - 1) % holes.length];
+            
+            // Create tee
+            tee = Matter.Bodies.rectangle(holeConfig.teeX, holeConfig.teeY, 40, 8, {
+                isStatic: true,
+                render: {
+                    fillStyle: '#8B4513'
+                }
+            });
+            
+            // Create ball with realistic golf ball properties
+            ball = Matter.Bodies.circle(holeConfig.teeX, holeConfig.teeY - 15, 8, {
+                restitution: 0.7,
+                frictionAir: 0.08,
+                friction: 0.6,
+                density: 0.002,
+                render: {
+                    fillStyle: '#FFFFFF',
+                    strokeStyle: '#000000',
+                    lineWidth: 1
+                }
+            });
+            
+            // Create hole
+            hole = Matter.Bodies.circle(holeConfig.holeX, holeConfig.holeY, 25, {
+                isStatic: true,
+                isSensor: true,
+                render: {
+                    fillStyle: '#000000',
+                    strokeStyle: '#333333',
+                    lineWidth: 3
+                }
+            });
+            
+            // Create flag
+            const flag = Matter.Bodies.rectangle(holeConfig.holeX, holeConfig.holeY - 50, 3, 80, {
+                isStatic: true,
+                render: {
+                    fillStyle: '#FF0000'
+                }
+            });
+            
+            // Create sand traps (visual only, physics handled in terrain checking)
+            holeConfig.sandTraps.forEach(sandConfig => {
+                const sandTrap = Matter.Bodies.rectangle(
+                    sandConfig.x, sandConfig.y, 
+                    sandConfig.width, sandConfig.height, 
+                    {
+                        isStatic: true,
+                        isSensor: true,
+                        render: {
+                            fillStyle: '#F4A460',
+                            strokeStyle: '#DEB887',
+                            lineWidth: 2
+                        }
+                    }
+                );
+                hazards.push(sandTrap);
+            });
+            
+            // Create water hazards
+            holeConfig.waterHazards.forEach(waterConfig => {
+                const waterHazard = Matter.Bodies.rectangle(
+                    waterConfig.x, waterConfig.y, 
+                    waterConfig.width, waterConfig.height, 
+                    {
+                        isStatic: true,
+                        isSensor: true,
+                        render: {
+                            fillStyle: '#4169E1',
+                            strokeStyle: '#1E90FF',
+                            lineWidth: 2
+                        }
+                    }
+                );
+                hazards.push(waterHazard);
+            });
+            
+            // Create trees (solid obstacles)
+            holeConfig.trees.forEach(treeConfig => {
+                const tree = Matter.Bodies.circle(
+                    treeConfig.x, treeConfig.y, treeConfig.radius,
+                    {
+                        isStatic: true,
+                        restitution: 0.3,
+                        render: {
+                            fillStyle: '#8B4513',
+                            strokeStyle: '#654321',
+                            lineWidth: 2
+                        }
+                    }
+                );
+                obstacles.push(tree);
+            });
+            
+            // Add all objects to world
+            Matter.World.add(world, [ball, hole, tee, flag, ...obstacles, ...hazards]);
+            
+            // Reset hole state
+            ballInHole = false;
+            holeStrokes = 0;
+            ballStatus = "fairway";
+            strokePenalty = 0;
+            
+            // Update UI
+            holeElement.textContent = `Hole: ${currentHole}/5`;
+            scoreElement.textContent = `Strokes: ${totalStrokes}`;
+            updateBallStatusDisplay();
+            statusElement.textContent = "Flick your hand quickly near the ball to hit it!";
+            nextHoleButton.style.display = 'none';
+            resetBallButton.style.display = 'block';
+            celebrationElement.style.display = 'none';
+        }
+        
+        // Initialize MediaPipe Hand Tracking
+        async function initHandTracking() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+                );
+                
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+                
+                statusElement.textContent = "Hand tracking ready!";
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize hand tracking:', error);
+                statusElement.textContent = "Hand tracking failed to load";
+                return false;
+            }
+        }
+        
+        // Initialize camera
+        async function initCamera() {
+            try {
+                video = document.getElementById('videoElement');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                });
+                
+                video.srcObject = stream;
+                await video.play();
+                
+                statusElement.textContent = "Camera ready!";
+                return true;
+            } catch (error) {
+                console.error('Failed to access camera:', error);
+                statusElement.textContent = "Camera access failed";
+                return false;
+            }
+        }
+        
+        // Smooth hand position using running average
+        function smoothHandPosition(newPos) {
+            handHistory.push(newPos);
+            if (handHistory.length > 5) {
+                handHistory.shift();
+            }
+            
+            // Calculate weighted average (more recent positions weighted higher)
+            let totalWeight = 0;
+            let weightedX = 0;
+            let weightedY = 0;
+            
+            handHistory.forEach((pos, index) => {
+                const weight = (index + 1) * (index + 1); // Quadratic weighting
+                weightedX += pos.x * weight;
+                weightedY += pos.y * weight;
+                totalWeight += weight;
+            });
+            
+            return {
+                x: weightedX / totalWeight,
+                y: weightedY / totalWeight
+            };
+        }
+        
+        // Calculate hand velocity with human-appropriate scaling
+        function calculateHandVelocity(currentPos, lastPos) {
+            if (!lastPos) return { x: 0, y: 0, magnitude: 0 };
+            
+            const velX = currentPos.x - lastPos.x;
+            const velY = currentPos.y - lastPos.y;
+            const rawMagnitude = Math.sqrt(velX * velX + velY * velY);
+            
+            // Scale velocity to account for human movement speeds
+            // Typical hand flick: 20-80 pixels per frame at 60fps
+            const scaledMagnitude = Math.min(rawMagnitude * 2.5, 100); // Cap at reasonable max
+            
+            return { 
+                x: velX, 
+                y: velY, 
+                magnitude: scaledMagnitude,
+                rawMagnitude: rawMagnitude
+            };
+        }
+        
+        // Process hand tracking with improved smoothing
+        function processHands() {
+            if (!handLandmarker || !video || video.videoWidth === 0) return;
+            
+            try {
+                const results = handLandmarker.detectForVideo(video, performance.now());
+                
+                // Clear previous hand indicators
+                document.querySelectorAll('.hand-indicator, .velocity-trail').forEach(el => el.remove());
+                handPositions = [];
+                handVelocities = [];
+                
+                if (results.landmarks && results.landmarks.length > 0) {
+                    const landmarks = results.landmarks[0];
+                    
+                    // Get index finger tip (landmark 8)
+                    const indexTip = landmarks[8];
+                    
+                    // Convert normalized coordinates to canvas coordinates
+                    const rawX = (1 - indexTip.x) * canvas.width; // Mirror horizontally
+                    const rawY = indexTip.y * canvas.height;
+                    
+                    // Apply smoothing
+                    const smoothedPos = smoothHandPosition({ x: rawX, y: rawY });
+                    handPositions.push(smoothedPos);
+                    
+                    // Calculate velocity with the last smoothed position
+                    const lastSmoothPos = handHistory.length > 1 ? 
+                        handHistory[handHistory.length - 2] : null;
+                    const velocity = calculateHandVelocity(smoothedPos, lastSmoothPos);
+                    handVelocities.push(velocity);
+                    
+                    // Update power meter with scaled velocity
+                    powerLevel = Math.min(velocity.magnitude / 50, 1); // Adjusted scaling
+                    powerFill.style.height = `${powerLevel * 100}%`;
+                    
+                    // Create visual hand indicator
+                    const indicator = document.createElement('div');
+                    indicator.className = 'hand-indicator';
+                    indicator.style.left = smoothedPos.x + 'px';
+                    indicator.style.top = smoothedPos.y + 'px';
+                    document.getElementById('gameContainer').appendChild(indicator);
+                    
+                    // Create velocity trail if moving fast
+                    if (velocity.magnitude > 12) {
+                        const numTrails = Math.min(Math.floor(velocity.magnitude / 8), 8);
+                        for (let i = 0; i < numTrails; i++) {
+                            const trail = document.createElement('div');
+                            trail.className = 'velocity-trail';
+                            trail.style.left = (smoothedPos.x - velocity.x * i * 0.8) + 'px';
+                            trail.style.top = (smoothedPos.y - velocity.y * i * 0.8) + 'px';
+                            trail.style.opacity = (numTrails - i) / numTrails;
+                            trail.style.transform = `translate(-50%, -50%) rotate(${Math.atan2(velocity.y, velocity.x)}rad)`;
+                            document.getElementById('gameContainer').appendChild(trail);
+                            
+                            // Remove after animation
+                            setTimeout(() => trail.remove(), 300);
+                        }
+                    }
+                } else {
+                    // Clear hand history when no hands detected
+                    handHistory = [];
+                    powerLevel = 0;
+                    powerFill.style.height = '0%';
+                }
+            } catch (error) {
+                console.error('Hand tracking error:', error);
+            }
+        }
+        
+        // Check for ball hitting with improved detection
+        function checkBallHit() {
+            if (ballInHole || !ball || Date.now() - lastHitTime < 500) return; // Cooldown
+            
+            handPositions.forEach((hand, index) => {
+                const velocity = handVelocities[index];
+                
+                // Check if hand is near ball and moving fast enough
+                const distance = Math.sqrt(
+                    Math.pow(ball.position.x - hand.x, 2) + 
+                    Math.pow(ball.position.y - hand.y, 2)
+                );
+                
+                // Adjusted thresholds for better human interaction
+                const minVelocity = 15; // Minimum flick speed
+                const maxDistance = 80;  // Maximum distance for hit
+                
+                if (distance < maxDistance && velocity.magnitude > minVelocity) {
+                    // Hit the ball with realistic force scaling
+                    const forceMultiplier = Math.min(velocity.magnitude / 100, 0.8) * 0.02;
+                    const force = {
+                        x: velocity.x * forceMultiplier,
+                        y: velocity.y * forceMultiplier
+                    };
+                    
+                    Matter.Body.applyForce(ball, ball.position, force);
+                    
+                    // Increment stroke count
+                    holeStrokes++;
+                    totalStrokes++;
+                    scoreElement.textContent = `Strokes: ${totalStrokes}${strokePenalty > 0 ? ` (+${strokePenalty} penalty)` : ''}`;
+                    
+                    // Visual feedback
+                    createHitEffect(hand.x, hand.y, velocity.magnitude);
+                    
+                    // Set cooldown to prevent multiple hits
+                    lastHitTime = Date.now();
+                    
+                    // Update status
+                    statusElement.textContent = `Good hit! Power: ${Math.round(powerLevel * 100)}%`;
+                }
+            });
+        }
+        
+        // Check if ball is in hole
+        function checkBallInHole() {
+            if (ballInHole || !ball || !hole) return;
+            
+            const distance = Math.sqrt(
+                Math.pow(ball.position.x - hole.position.x, 2) + 
+                Math.pow(ball.position.y - hole.position.y, 2)
+            );
+            
+            // Check if ball is in hole and moving slowly
+            if (distance < 20 && ball.speed < 3) {
+                ballInHole = true;
+                
+                // Show celebration based on performance
+                if (holeStrokes === 1) {
+                    celebrationElement.textContent = "HOLE IN ONE! 🏌️‍♂️";
+                } else if (holeStrokes === 2) {
+                    celebrationElement.textContent = "EAGLE! 🦅";
+                } else if (holeStrokes === 3) {
+                    celebrationElement.textContent = "BIRDIE! 🐦";
+                } else if (holeStrokes === 4) {
+                    celebrationElement.textContent = "PAR! ⛳";
+                } else {
+                    celebrationElement.textContent = "HOLE COMPLETE! 🎯";
+                }
+                
+                celebrationElement.style.display = 'block';
+                
+                // Show next hole button or game complete message
+                if (currentHole < 5) {
+                    nextHoleButton.style.display = 'block';
+                    resetBallButton.style.display = 'none';
+                    statusElement.textContent = `Hole ${currentHole} complete in ${holeStrokes} strokes!`;
+                } else {
+                    statusElement.textContent = `Game complete! Total strokes: ${totalStrokes}`;
+                    resetBallButton.style.display = 'none';
+                    gameComplete = true;
+                }
+            }
+        }
+        
+        // Create enhanced hit effect
+        function createHitEffect(x, y, power) {
+            const numParticles = Math.floor(power / 3) + 8;
+            
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.width = Math.random() * 6 + 3 + 'px';
+                particle.style.height = particle.style.width;
+                
+                // Different colors based on power
+                const colors = power > 40 ? ['#FF4500', '#FF6347', '#FFD700'] : 
+                              power > 20 ? ['#FFD700', '#FFA500', '#FFFF00'] :
+                              ['#90EE90', '#98FB98', '#00FF7F'];
+                              
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.borderRadius = '50%';
+                particle.style.pointerEvents = 'none';
+                particle.style.zIndex = '60';
+                particle.style.boxShadow = '0 0 6px rgba(255, 215, 0, 0.6)';
+                
+                document.getElementById('gameContainer').appendChild(particle);
+                
+                const angle = (i / numParticles) * Math.PI * 2;
+                const speed = Math.random() * 100 + 60;
+                const gravity = Math.random() * 50 + 20;
+                
+                particle.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                    { 
+                        transform: `translate(${Math.cos(angle) * speed - 50}%, ${Math.sin(angle) * speed + gravity - 50}%) scale(0)`, 
+                        opacity: 0 
+                    }
+                ], {
+                    duration: 1200,
+                    easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                }).onfinish = () => particle.remove();
+            }
+        }
+        
+        // Reset ball to tee
+        function resetBall() {
+            if (!ball) return;
+            
+            const holeConfig = holes[(currentHole - 1) % holes.length];
+            Matter.Body.setPosition(ball, { x: holeConfig.teeX, y: holeConfig.teeY - 20 });
+            Matter.Body.setVelocity(ball, { x: 0, y: 0 });
+            Matter.Body.setAngularVelocity(ball, 0);
+            
+            ballStatus = "fairway";
+            updateBallStatusDisplay();
+            statusElement.textContent = "Ball reset to tee. Ready for next shot!";
+        }
+        
+        // Game loop with enhanced physics monitoring
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Process hand tracking
+            processHands();
+            
+            // Check for ball interactions
+            checkBallHit();
+            checkBallInHole();
+            
+            // Monitor ball for physics corrections
+            if (ball) {
+                // Ensure ball doesn't get stuck with infinite velocity
+                if (ball.speed > 50) {
+                    Matter.Body.setVelocity(ball, {
+                        x: ball.velocity.x * 0.8,
+                        y: ball.velocity.y * 0.8
+                    });
+                }
+                
+                // Apply additional air resistance when ball is moving very fast
+                if (ball.speed > 20) {
+                    const dampingForce = {
+                        x: -ball.velocity.x * 0.001,
+                        y: -ball.velocity.y * 0.001
+                    };
+                    Matter.Body.applyForce(ball, ball.position, dampingForce);
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start game
+        async function startGame() {
+            statusElement.textContent = "Starting game...";
+            startButton.style.display = 'none';
+            
+            const cameraOk = await initCamera();
+            const handTrackingOk = await initHandTracking();
+            
+            if (cameraOk && handTrackingOk) {
+                gameRunning = true;
+                setupHole(currentHole);
+                gameLoop();
+            } else {
+                statusElement.textContent = "Failed to initialize. Please refresh and try again.";
+                startButton.style.display = 'block';
+            }
+        }
+        
+        // Next hole
+        function nextHole() {
+            if (currentHole < 5) {
+                currentHole++;
+                setupHole(currentHole);
+            }
+        }
+        
+        // Initialize physics immediately
+        initPhysics();
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        nextHoleButton.addEventListener('click', nextHole);
+        resetBallButton.addEventListener('click', resetBall);
+        
+        // Add click-to-hit for testing
+        canvas.addEventListener('click', (e) => {
+            if (!ball || !gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            const distance = Math.sqrt(
+                Math.pow(ball.position.x - clickX, 2) + 
+                Math.pow(ball.position.y - clickY, 2)
+            );
+            
+            if (distance < 100) {
+                // Apply force towards click
+                const direction = {
+                    x: clickX - ball.position.x,
+                    y: clickY - ball.position.y
+                };
+                const dist = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+                
+                const force = {
+                    x: (direction.x / dist) * 0.02,
+                    y: (direction.y / dist) * 0.02
+                };
+                
+                Matter.Body.applyForce(ball, ball.position, force);
+                
+                holeStrokes++;
+                totalStrokes++;
+                scoreElement.textContent = `Strokes: ${totalStrokes} (Click test)`;
+                statusElement.textContent = `Ball hit by click! Testing physics...`;
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if (render) {
+                render.options.width = canvas.width;
+                render.options.height = canvas.height;
+            }
+        });
+    </script>
+</body>
+</html>

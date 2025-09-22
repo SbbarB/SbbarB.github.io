@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Ferrofluid Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0xffffff, 1);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Mouse tracking
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        let mouseWorldPos = new THREE.Vector3(0, 0, 0);
+        
+        // Create larger, more visible ferrofluid sphere
+        const sphereRadius = 4.0; // Slightly larger for better visibility
+        const subdivisions = 128;
+        const geometry = new THREE.SphereGeometry(sphereRadius, subdivisions, subdivisions);
+        
+        // Store original vertex positions
+        const originalPositions = geometry.attributes.position.array.slice();
+        const vertexCount = geometry.attributes.position.count;
+        
+        // Vertex velocities for smooth animation
+        const velocities = new Float32Array(vertexCount * 3);
+        
+        // Enhanced material for better spike visibility
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x000000, // Pure black for maximum contrast
+            shininess: 150,
+            specular: 0x666666, // More specular highlights
+            transparent: false,
+            side: THREE.DoubleSide
+        });
+        
+        const ferrofluid = new THREE.Mesh(geometry, material);
+        ferrofluid.castShadow = true;
+        ferrofluid.receiveShadow = true;
+        scene.add(ferrofluid);
+        
+        // Enhanced lighting setup for better visibility
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4); // Increased ambient
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Brighter main light
+        directionalLight.position.set(8, 8, 8);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        const rimLight = new THREE.DirectionalLight(0x8888ff, 0.6); // Brighter rim light
+        rimLight.position.set(-8, 4, -8);
+        scene.add(rimLight);
+        
+        // Additional front lighting for better spike visibility
+        const frontLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        frontLight.position.set(0, 0, 10);
+        scene.add(frontLight);
+        
+        const pointLight1 = new THREE.PointLight(0xff6666, 0.4, 15); // Brighter and larger range
+        pointLight1.position.set(5, 0, 5);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0x6666ff, 0.4, 15);
+        pointLight2.position.set(-5, 0, -5);
+        scene.add(pointLight2);
+        
+        // Create invisible plane for mouse ray casting
+        const planeGeometry = new THREE.PlaneGeometry(20, 20);
+        const planeMaterial = new THREE.MeshBasicMaterial({ 
+            transparent: true, 
+            opacity: 0,
+            side: THREE.DoubleSide
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        scene.add(plane);
+        
+        // Position camera for optimal viewing
+        camera.position.set(0, 2, 10); // Slightly above and closer
+        camera.lookAt(0, 0, 0);
+        
+        // Mouse movement handler
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Ray casting to get 3D mouse position
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(plane);
+            
+            if (intersects.length > 0) {
+                mouseWorldPos.copy(intersects[0].point);
+            }
+        }
+        
+        window.addEventListener('mousemove', onMouseMove);
+        
+        // Ferrofluid physics with multiple spike system
+        function updateFerrofluid() {
+            const positions = geometry.attributes.position.array;
+            const time = Date.now() * 0.001;
+            
+            for (let i = 0; i < vertexCount; i++) {
+                const i3 = i * 3;
+                
+                // Get original vertex position
+                const originalX = originalPositions[i3];
+                const originalY = originalPositions[i3 + 1];
+                const originalZ = originalPositions[i3 + 2];
+                
+                // Create vertex position vector and normal
+                const vertex = new THREE.Vector3(originalX, originalY, originalZ);
+                const vertexNormal = vertex.clone().normalize();
+                
+                // Calculate magnetic field direction
+                const magneticField = mouseWorldPos.clone().normalize();
+                
+                // Calculate alignment with magnetic field
+                const fieldAlignment = vertexNormal.dot(magneticField);
+                
+                // Distance influence
+                const distanceToMouse = vertex.distanceTo(mouseWorldPos);
+                const maxInfluence = 6;
+                const distanceInfluence = Math.max(0, Math.pow((maxInfluence - distanceToMouse) / maxInfluence, 1.2));
+                
+                // Base radius with subtle breathing
+                const organicBreathing = Math.sin(time * 0.6 + vertex.length() * 1.2) * 0.015;
+                let targetRadius = sphereRadius + organicBreathing;
+                
+                // Only create spikes on hemisphere facing magnet
+                if (fieldAlignment > 0 && distanceInfluence > 0.02) {
+                    
+                    const angleFromFieldLine = Math.acos(Math.max(0, Math.min(1, fieldAlignment)));
+                    let totalSpikeStrength = 0;
+                    
+                    // Primary central spike - more visible
+                    const centralSpikeStrength = Math.pow(fieldAlignment, 2.2); // Slightly more responsive
+                    const centralSpikeLength = centralSpikeStrength * distanceInfluence * 1.8; // More prominent
+                    totalSpikeStrength += centralSpikeLength;
+                    
+                    // Ring 1: Inner spikes - enhanced visibility
+                    const ring1Angle = 0.5;
+                    if (angleFromFieldLine <= ring1Angle) {
+                        const ring1Factor = Math.cos(angleFromFieldLine / ring1Angle * Math.PI / 2);
+                        const ring1Strength = Math.pow(ring1Factor, 1.6); // More visible
+                        const ring1Length = ring1Strength * distanceInfluence * 1.4; // Larger spikes
+                        totalSpikeStrength += ring1Length;
+                    }
+                    
+                    // Ring 2: Medium spikes - better definition
+                    const ring2Angle = 0.8;
+                    if (angleFromFieldLine <= ring2Angle && angleFromFieldLine > ring1Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring1Angle) / (ring2Angle - ring1Angle);
+                        const ring2Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring2Strength = Math.pow(ring2Factor, 2.0); // More visible
+                        const ring2Length = ring2Strength * distanceInfluence * 1.1; // Larger
+                        totalSpikeStrength += ring2Length;
+                    }
+                    
+                    // Ring 3: Outer spikes - improved visibility
+                    const ring3Angle = 1.1;
+                    if (angleFromFieldLine <= ring3Angle && angleFromFieldLine > ring2Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring2Angle) / (ring3Angle - ring2Angle);
+                        const ring3Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring3Strength = Math.pow(ring3Factor, 2.8); // More defined
+                        const ring3Length = ring3Strength * distanceInfluence * 0.7; // Slightly larger
+                        totalSpikeStrength += ring3Length;
+                    }
+                    
+                    // Apply spike extension
+                    targetRadius += totalSpikeStrength;
+                    
+                    // Surface detail
+                    const surfaceDetail = Math.sin(vertex.x * 6 + time * 1.5) * 
+                                         Math.cos(vertex.y * 6 + time * 1.2) * 
+                                         Math.sin(vertex.z * 6 + time * 1.8) * 0.02;
+                    if (totalSpikeStrength > 0.1) {
+                        targetRadius += surfaceDetail * totalSpikeStrength * 0.5;
+                    }
+                    
+                    // Valley formation
+                    if (totalSpikeStrength < 0.05 && fieldAlignment > 0.1) {
+                        targetRadius -= Math.pow(fieldAlignment, 2) * 0.03;
+                    }
+                }
+                
+                // Non-magnetic side
+                if (fieldAlignment <= 0) {
+                    const smoothTransition = Math.pow(Math.abs(fieldAlignment), 0.3) * 0.025;
+                    targetRadius = sphereRadius - smoothTransition;
+                }
+                
+                // Get current radius
+                const currentVertex = new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2]);
+                const currentRadius = currentVertex.length();
+                
+                // Spring physics
+                const radiusDiff = targetRadius - currentRadius;
+                const springForce = 0.06;
+                const damping = 0.94;
+                
+                velocities[i] += radiusDiff * springForce;
+                velocities[i] *= damping;
+                
+                const maxVelocity = 0.15;
+                velocities[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocities[i]));
+                
+                const newRadius = Math.max(0.8, currentRadius + velocities[i]);
+                
+                // Update vertex position
+                if (isFinite(newRadius)) {
+                    positions[i3] = vertexNormal.x * newRadius;
+                    positions[i3 + 1] = vertexNormal.y * newRadius;
+                    positions[i3 + 2] = vertexNormal.z * newRadius;
+                }
+            }
+            
+            // Mark geometry for update
+            geometry.attributes.position.needsUpdate = true;
+            
+            // Update normals occasionally
+            if (Math.random() < 0.2) {
+                geometry.computeVertexNormals();
+            }
+        }
+        
+        // Static camera - no rotation
+        function updateCamera() {
+            // Camera stays in fixed position for better interaction focus
+            // camera.position is already set to (0, 0, 12) and doesn't need to move
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateFerrofluid();
+            updateCamera();
+            
+            // Subtle light animation for depth without distraction
+            const time = Date.now() * 0.001;
+            pointLight1.intensity = 0.4 + Math.sin(time * 0.8) * 0.05; // Gentler animation
+            pointLight2.intensity = 0.4 + Math.cos(time * 0.6) * 0.05;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        window.addEventListener('resize', onWindowResize);
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

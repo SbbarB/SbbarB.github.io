@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AR Mini Golf with Hand Power Indicator</title>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
+
+let handLandmarker;
+let video;
+let handPositions = [];
+let lastHandPos = null;
+
+let gameState = {
+    ball: { pos: {x:0,y:0,z:0}, vel:{x:0,y:0,z:0}, entity:null },
+    hole: { pos:{x:0,y:0,z:0}, entity:null },
+    handEntity: null,
+    powerLine: null,
+    strokes: 0,
+    par: 3,
+    hitCooldown: false,
+    obstacles: []
+};
+
+// Initialize webcam
+async function initCamera() {
+    video = document.createElement('video');
+    video.style.display='none';
+    document.body.appendChild(video);
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{width:640, height:480} });
+    video.srcObject = stream;
+    await video.play();
+}
+
+// Initialize MediaPipe HandLandmarker
+async function initHandTracking() {
+    const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm');
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+            modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate:"GPU"
+        },
+        runningMode:"VIDEO",
+        numHands:1
+    });
+}
+
+// Map normalized coordinates to A-Frame world
+function mapToWorld(xNorm, yNorm) {
+    const x = (xNorm-0.5)*4;  // [-2,2]
+    const y = (0.5 - yNorm)*2; // [-1,1]
+    const z = 0;
+    return {x,y,z};
+}
+
+// Detect hands
+async function detectHands() {
+    if(!handLandmarker) return;
+    const results = handLandmarker.detectForVideo(video, performance.now());
+    handPositions=[];
+    if(results.landmarks && results.landmarks.length>0) {
+        const lm = results.landmarks[0];
+        const tip = lm[8]; // index tip
+        const pos = mapToWorld(tip.x, tip.y);
+        handPositions.push(pos);
+    }
+    requestAnimationFrame(detectHands);
+}
+
+// Apply hand movement to hit ball
+function updateBallPhysics() {
+    if(handPositions.length===0 || gameState.hitCooldown) return;
+    const hand = handPositions[0];
+    // Visual hand update
+    gameState.handEntity.setAttribute('position', `${hand.x} ${hand.y} ${hand.z}`);
+    
+    // Power calculation: based on hand velocity
+    if(lastHandPos) {
+        const dx = hand.x - lastHandPos.x;
+        const dy = hand.y - lastHandPos.y;
+        const dz = hand.z - lastHandPos.z;
+        const speed = Math.sqrt(dx*dx+dy*dy+dz*dz);
+        // Update power line visual
+        const lineLength = Math.min(speed*10, 2);
+        gameState.powerLine.setAttribute('line', `start:${gameState.ball.pos.x} ${gameState.ball.pos.y} ${gameState.ball.pos.z}; end:${gameState.ball.pos.x+dx*10} ${gameState.ball.pos.y+dy*10} ${gameState.ball.pos.z+dz*10}; color:orange`);
+        
+        // Hit if hand near ball
+        const bx = gameState.ball.pos.x - hand.x;
+        const by = gameState.ball.pos.y - hand.y;
+        const bz = gameState.ball.pos.z - hand.z;
+        const dist = Math.sqrt(bx*bx+by*by+bz*bz);
+        if(dist<0.3 && speed>0.01) {
+            gameState.ball.vel.x += dx*15;
+            gameState.ball.vel.y += dy*15;
+            gameState.ball.vel.z += dz*15;
+            gameState.strokes++;
+            gameState.hitCooldown=true;
+            setTimeout(()=>{gameState.hitCooldown=false}, 500);
+        }
+    }
+    lastHandPos = hand;
+}
+
+// Move ball with physics
+function moveBall() {
+    gameState.ball.pos.x += gameState.ball.vel.x*0.02;
+    gameState.ball.pos.y += gameState.ball.vel.y*0.02;
+    gameState.ball.pos.z += gameState.ball.vel.z*0.02;
+    gameState.ball.vel.x *=0.95;
+    gameState.ball.vel.y *=0.95;
+    gameState.ball.vel.z *=0.95;
+
+    // Wall collisions
+    if(gameState.ball.pos.x<-2 || gameState.ball.pos.x>2) gameState.ball.vel.x*=-0.5;
+    if(gameState.ball.pos.z<-2 || gameState.ball.pos.z>2) gameState.ball.vel.z*=-0.5;
+    if(gameState.ball.pos.y<0) {gameState.ball.pos.y=0; gameState.ball.vel.y*=-0.5;}
+    
+    // Obstacle collisions
+    gameState.obstacles.forEach(obs=>{
+        const dx = gameState.ball.pos.x - obs.x;
+        const dz = gameState.ball.pos.z - obs.z;
+        if(Math.abs(dx)<0.2 && Math.abs(dz)<0.2){
+            gameState.ball.vel.x*=-0.5;
+            gameState.ball.vel.z*=-0.5;
+        }
+    });
+
+    gameState.ball.entity.setAttribute('position', `${gameState.ball.pos.x} ${gameState.ball.pos.y} ${gameState.ball.pos.z}`);
+
+    // Check hole
+    const dxh = gameState.ball.pos.x - gameState.hole.pos.x;
+    const dyh = gameState.ball.pos.y - gameState.hole.pos.y;
+    const dzh = gameState.ball.pos.z - gameState.hole.pos.z;
+    const distHole = Math.sqrt(dxh*dxh+dyh*dyh+dzh*dzh);
+    if(distHole<0.2){
+        alert(`Hole completed in ${gameState.strokes} strokes! Par: ${gameState.par}`);
+        resetHole();
+    }
+}
+
+// Reset hole
+function resetHole(){
+    gameState.ball.pos={x:0,y:0,z:0};
+    gameState.ball.vel={x:0,y:0,z:0};
+    gameState.strokes=0;
+    gameState.hole.pos={x: Math.random()*3-1.5, y:0, z: Math.random()*3-1.5};
+    gameState.hole.entity.setAttribute('position', `${gameState.hole.pos.x} ${gameState.hole.pos.y} ${gameState.hole.pos.z}`);
+}
+
+// Game loop
+function gameLoop() {
+    updateBallPhysics();
+    moveBall();
+    requestAnimationFrame(gameLoop);
+}
+
+// Initialize scene
+function initScene() {
+    const scene = document.querySelector('a-scene');
+
+    // Floor
+    const floor = document.createElement('a-plane');
+    floor.setAttribute('width','4'); floor.setAttribute('height','4');
+    floor.setAttribute('color','#4CAF50'); floor.setAttribute('rotation','-90 0 0');
+    scene.appendChild(floor);
+
+    // Ball
+    const ball = document.createElement('a-sphere');
+    ball.setAttribute('radius','0.1'); ball.setAttribute('color','yellow'); ball.setAttribute('position','0 0 0');
+    scene.appendChild(ball);
+    gameState.ball.entity = ball;
+
+    // Hole
+    const hole = document.createElement('a-cylinder');
+    hole.setAttribute('radius','0.15'); hole.setAttribute('height','0.02'); hole.setAttribute('color','red');
+    hole.setAttribute('position', `${gameState.hole.pos.x} ${gameState.hole.pos.y} ${gameState.hole.pos.z}`);
+    scene.appendChild(hole);
+    gameState.hole.entity = hole;
+
+    // Hand visual
+    const hand = document.createElement('a-sphere');
+    hand.setAttribute('radius','0.05'); hand.setAttribute('color','blue');
+    scene.appendChild(hand);
+    gameState.handEntity = hand;
+
+    // Power line
+    const line = document.createElement('a-entity');
+    line.setAttribute('line','start:0 0 0; end:0 0 0; color:orange');
+    scene.appendChild(line);
+    gameState.powerLine = line;
+
+    // Random obstacles
+    for(let i=0;i<3;i++){
+        const obs = document.createElement('a-box');
+        const ox = Math.random()*3-1.5; const oz = Math.random()*3-1.5;
+        obs.setAttribute('position',`${ox} 0.1 ${oz}`); obs.setAttribute('width','0.3'); obs.setAttribute('height','0.2'); obs.setAttribute('depth','0.3'); obs.setAttribute('color','gray');
+        scene.appendChild(obs);
+        gameState.obstacles.push({x:ox,z:oz});
+    }
+}
+
+// Start everything
+window.addEventListener('load', async ()=>{
+    await initCamera();
+    await initHandTracking();
+    initScene();
+    detectHands();
+    gameLoop();
+});
+</script>
+</head>
+<body>
+<a-scene vr-mode-ui="enabled: false">
+    <a-entity camera position="0 1.6 3"></a-entity>
+</a-scene>
+<h2>AR Mini Golf</h2>
+<p>Move your index finger near the ball (yellow) to hit it toward the hole (red). Power is indicated by the orange line.</p>
+</body>
+</html>

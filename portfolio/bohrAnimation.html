@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyroscopic Atomic Model</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #333333;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #666666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <div>N - Nitrogen</div>
+        <div>Atomic Number: 7</div>
+    </div>
+    
+    <div class="controls">
+        Mouse: Rotate view | Scroll: Zoom
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0xffffff, 1);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0x888888, 1.2, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // Nucleus - clustered protons and neutrons like the reference
+        const nucleusGroup = new THREE.Group();
+        const nucleusRadius = 0.4; // Container radius
+        
+        // Nitrogen has 7 protons and 7 neutrons
+        const protons = [];
+        const neutrons = [];
+        
+        // Create protons (darker gray)
+        for (let i = 0; i < 7; i++) {
+            const protonGeometry = new THREE.SphereGeometry(0.18, 16, 16);
+            const protonMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x333333,
+                emissive: 0x111111,
+                emissiveIntensity: 0.2
+            });
+            const proton = new THREE.Mesh(protonGeometry, protonMaterial);
+            
+            // Initial position
+            const phi = Math.acos(-1 + (2 * i) / 7);
+            const theta = Math.sqrt(7 * Math.PI) * phi;
+            const radius = 0.2;
+            
+            proton.position.x = radius * Math.cos(theta) * Math.sin(phi);
+            proton.position.y = radius * Math.sin(theta) * Math.sin(phi);
+            proton.position.z = radius * Math.cos(phi);
+            
+            nucleusGroup.add(proton);
+            protons.push({
+                mesh: proton,
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.008,
+                    (Math.random() - 0.5) * 0.008,
+                    (Math.random() - 0.5) * 0.008
+                ),
+                radius: 0.18
+            });
+        }
+        
+        // Create neutrons (lighter gray)
+        for (let i = 0; i < 7; i++) {
+            const neutronGeometry = new THREE.SphereGeometry(0.18, 16, 16);
+            const neutronMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x666666,
+                emissive: 0x222222,
+                emissiveIntensity: 0.1
+            });
+            const neutron = new THREE.Mesh(neutronGeometry, neutronMaterial);
+            
+            // Initial position
+            const phi = Math.acos(-1 + (2 * i) / 7) + 0.3;
+            const theta = Math.sqrt(7 * Math.PI) * phi + Math.PI;
+            const radius = 0.15;
+            
+            neutron.position.x = radius * Math.cos(theta) * Math.sin(phi);
+            neutron.position.y = radius * Math.sin(theta) * Math.sin(phi);
+            neutron.position.z = radius * Math.cos(phi);
+            
+            nucleusGroup.add(neutron);
+            neutrons.push({
+                mesh: neutron,
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.006,
+                    (Math.random() - 0.5) * 0.006,
+                    (Math.random() - 0.5) * 0.006
+                ),
+                radius: 0.18
+            });
+        }
+        
+        scene.add(nucleusGroup);
+
+        // Orbital system
+        const orbitalGroup = new THREE.Group();
+        scene.add(orbitalGroup);
+
+        // Create orbital rings and electrons
+        const orbitals = [];
+        const electrons = [];
+
+        // First shell (2 electrons)
+        const shell1 = createOrbital(2, 2, 0x444444, 0x333333);
+        orbitals.push(shell1);
+
+        // Second shell (5 electrons) - multiple rings for gyroscopic effect  
+        const shell2a = createOrbital(3.5, 2, 0x333333, 0x222222);
+        const shell2b = createOrbital(3.5, 2, 0x555555, 0x444444);
+        const shell2c = createOrbital(3.5, 1, 0x222222, 0x333333);
+        
+        orbitals.push(shell2a, shell2b, shell2c);
+
+        function createOrbital(radius, numElectrons, electronColor, ringColor) {
+            const orbitalGroup = new THREE.Group();
+            
+            // Create orbital ring
+            const ringGeometry = new THREE.RingGeometry(radius - 0.05, radius + 0.05, 64);
+            const ringMaterial = new THREE.MeshBasicMaterial({ 
+                color: ringColor,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            orbitalGroup.add(ring);
+
+            // Create electrons for this orbital
+            const orbitalElectrons = [];
+            for (let i = 0; i < numElectrons; i++) {
+                const electronGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+                const electronMaterial = new THREE.MeshPhongMaterial({ 
+                    color: electronColor,
+                    emissive: electronColor,
+                    emissiveIntensity: 0.3
+                });
+                const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+                
+                // Position electron on orbital
+                const angle = (i / numElectrons) * Math.PI * 2;
+                electron.position.x = Math.cos(angle) * radius;
+                electron.position.z = Math.sin(angle) * radius;
+                
+                orbitalGroup.add(electron);
+                orbitalElectrons.push({
+                    mesh: electron,
+                    angle: angle,
+                    radius: radius,
+                    speed: 0.01 + Math.random() * 0.005
+                });
+            }
+            
+            electrons.push(...orbitalElectrons);
+            scene.add(orbitalGroup);
+            
+            return {
+                group: orbitalGroup,
+                electrons: orbitalElectrons,
+                rotationSpeed: {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                }
+            };
+        }
+
+        // Mouse controls
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - window.innerWidth / 2) / window.innerWidth;
+            mouseY = (event.clientY - window.innerHeight / 2) / window.innerHeight;
+            targetRotationX = mouseY * Math.PI;
+            targetRotationY = mouseX * Math.PI;
+        });
+
+        // Zoom controls
+        document.addEventListener('wheel', (event) => {
+            camera.position.z += event.deltaY * 0.01;
+            camera.position.z = Math.max(5, Math.min(20, camera.position.z));
+        });
+
+        // Set initial camera position
+        camera.position.z = 12;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate the entire atom model based on mouse
+            orbitalGroup.rotation.x += (targetRotationX - orbitalGroup.rotation.x) * 0.05;
+            orbitalGroup.rotation.y += (targetRotationY - orbitalGroup.rotation.y) * 0.05;
+
+            // Animate orbitals with gyroscopic motion
+            orbitals.forEach((orbital, index) => {
+                // Gyroscopic rotation - each orbital rotates around different axes
+                orbital.group.rotation.x += orbital.rotationSpeed.x;
+                orbital.group.rotation.y += orbital.rotationSpeed.y;
+                orbital.group.rotation.z += orbital.rotationSpeed.z;
+                
+                // Move electrons along their orbits
+                orbital.electrons.forEach(electronData => {
+                    electronData.angle += electronData.speed;
+                    electronData.mesh.position.x = Math.cos(electronData.angle) * electronData.radius;
+                    electronData.mesh.position.z = Math.sin(electronData.angle) * electronData.radius;
+                    
+                    // Add slight orbital wobble
+                    electronData.mesh.position.y = Math.sin(electronData.angle * 3) * 0.1;
+                });
+            });
+
+            // Nucleus physics simulation - smoother balls in container
+            const allNucleusParticles = [...protons, ...neutrons];
+            
+            allNucleusParticles.forEach((particle, index) => {
+                // Update position based on velocity
+                particle.mesh.position.add(particle.velocity);
+                
+                // Check collision with container sphere (smoother)
+                const distanceFromCenter = particle.mesh.position.length();
+                if (distanceFromCenter + particle.radius > nucleusRadius) {
+                    // Gentler bounce off container wall
+                    const normal = particle.mesh.position.clone().normalize();
+                    particle.velocity.reflect(normal);
+                    particle.velocity.multiplyScalar(0.7); // Reduce bounce energy
+                    // Gently push particle back inside
+                    particle.mesh.position.copy(normal.multiplyScalar(nucleusRadius - particle.radius));
+                }
+                
+                // Gentler particle-to-particle collision
+                for (let j = index + 1; j < allNucleusParticles.length; j++) {
+                    const other = allNucleusParticles[j];
+                    const distance = particle.mesh.position.distanceTo(other.mesh.position);
+                    const minDistance = particle.radius + other.radius;
+                    
+                    if (distance < minDistance && distance > 0) {
+                        // Calculate collision normal
+                        const normal = particle.mesh.position.clone().sub(other.mesh.position).normalize();
+                        
+                        // Gently separate particles
+                        const overlap = minDistance - distance;
+                        const pushAmount = overlap * 0.3; // Reduced from 0.5
+                        particle.mesh.position.add(normal.clone().multiplyScalar(pushAmount));
+                        other.mesh.position.sub(normal.clone().multiplyScalar(pushAmount));
+                        
+                        // Gentler velocity adjustment
+                        const relativeVelocity = particle.velocity.clone().sub(other.velocity);
+                        const velocityAlongNormal = relativeVelocity.dot(normal);
+                        
+                        if (velocityAlongNormal > 0) {
+                            const impulse = normal.clone().multiplyScalar(velocityAlongNormal * 0.3);
+                            particle.velocity.sub(impulse);
+                            other.velocity.add(impulse);
+                        }
+                    }
+                }
+                
+                // Stronger damping for smoother movement
+                particle.velocity.multiplyScalar(0.95);
+                particle.mesh.material.emissiveIntensity = 0.2 + Math.sin(Date.now() * 0.003 + index) * 0.1;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

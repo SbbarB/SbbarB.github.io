@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Name - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --accent-primary: #6495ED;
+            --accent-secondary: #FFB6C1;
+            --mesh-color: #000000;
+            --mesh-hover: #c0c0c0;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Simple Mesh Canvas */
+        .mesh-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Enhanced Cursor Trail */
+        .cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.8;
+            transition: none;
+            will-change: transform;
+        }
+
+        .cursor-dot {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9997;
+            opacity: 0.6;
+            will-change: transform;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Loading Animation */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: all 0.8s ease;
+        }
+
+        .loader-text {
+            font-size: 1.4rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: loaderTextReveal 1s ease-out 0.5s forwards, colorCycle 4s ease-in-out infinite;
+        }
+
+        @keyframes loaderTextReveal {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes colorCycle {
+            0%, 100% { color: var(--accent-primary); }
+            50% { color: var(--accent-secondary); }
+        }
+
+        .loader-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--accent-primary), 
+                var(--accent-secondary), 
+                transparent);
+            animation: loaderProgress 2s ease-in-out forwards;
+        }
+
+        @keyframes loaderProgress {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* Orbital Animation Overlay */
+        .orbital-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 75;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+            pointer-events: none;
+        }
+
+        .orbital-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .orbital-info {
+            position: absolute;
+            top: 6rem;
+            left: 6rem;
+            color: var(--text-primary);
+            font-family: 'Courier New', monospace;
+            z-index: 100;
+        }
+
+        .orbital-title {
+            font-size: 1.2rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .orbital-state {
+            font-size: 2rem;
+            font-weight: 100;
+            letter-spacing: 0.3em;
+        }
+
+        .orbital-subtitle {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+
+        .orbital-controls {
+            position: absolute;
+            bottom: 6rem;
+            right: 6rem;
+            color: var(--text-primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(100, 149, 237, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.15) 0%, transparent 60%);
+            opacity: 0;
+            animation: heroGlow 3s ease-out 1s forwards;
+        }
+
+        @keyframes heroGlow {
+            0% { 
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 250;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: heroReveal 2s ease-out 0.5s forwards;
+            position: relative;
+        }
+
+        @keyframes heroReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(4rem, 10vw, 10rem);
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, 
+                var(--text-primary) 0%, 
+                var(--accent-primary) 50%, 
+                var(--accent-secondary) 100%);
+            background-size: 300% 300%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            overflow: hidden;
+            animation: gradientShift 6s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero .subtitle {
+            font-size: 2.0rem;
+            color: #000204;
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: subtitleReveal 1.5s ease-out 1.5s forwards;
+            font-weight: 750;
+        }
+
+        @keyframes subtitleReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Projects Section */
+        .projects {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            margin-top: -5rem;
+            margin-bottom: 4rem;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-primary);
+            box-shadow: 
+                0 20px 40px rgba(100, 149, 237, 0.2),
+                0 0 20px rgba(255, 182, 193, 0.1);
+        }
+
+        .project-image {
+            height: 200px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-image::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, 
+                var(--accent-primary) 0%, 
+                var(--accent-secondary) 50%, 
+                transparent 100%);
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: projectPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes projectPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .project-content {
+            padding: 1.5rem;
+        }
+
+        .project-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .project-tech {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .project-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .project-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .project-link {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .project-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: white;
+            border-color: var(--accent-primary);
+            box-shadow: 0 5px 15px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Modal for expanded project view */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .modal-image {
+            height: 300px;
+            background: linear-gradient(135deg, 
+                rgba(100, 149, 237, 0.2), 
+                rgba(255, 182, 193, 0.2), 
+                rgba(255, 255, 255, 0.1),
+                var(--bg-primary));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 6rem 2rem;
+            text-align: center;
+            background: rgba(248, 248, 248, 0.9);
+            position: relative;
+            z-index: 100;
+            margin-top: 4rem;
+        }
+
+        .contact-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-link:hover {
+            background: linear-gradient(45deg, 
+                var(--accent-primary), 
+                var(--accent-secondary));
+            color: white;
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(100, 149, 237, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .contact-links {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cursor-trail, .cursor-dot {
+                display: none;
+            }
+
+            .orbital-info {
+                top: 3rem;
+                left: 3rem;
+            }
+
+            .orbital-controls {
+                bottom: 3rem;
+                right: 3rem;
+            }
+        }
+
+        /* Intersection Observer animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Simple Mesh Canvas -->
+    <canvas class="mesh-canvas" id="meshCanvas"></canvas>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-text">Initializing Website...</div>
+        <div class="loader-progress"></div>
+    </div>
+
+    <!-- Enhanced Cursor Trail -->
+    <div class="cursor-trail" id="cursorTrail1"></div>
+    <div class="cursor-trail" id="cursorTrail2"></div>
+    <div class="cursor-trail" id="cursorTrail3"></div>
+    
+    <!-- Cursor dot trail -->
+    <div class="cursor-dot" id="dot1"></div>
+    <div class="cursor-dot" id="dot2"></div>
+    <div class="cursor-dot" id="dot3"></div>
+    <div class="cursor-dot" id="dot4"></div>
+    <div class="cursor-dot" id="dot5"></div>
+    <div class="cursor-dot" id="dot6"></div>
+    <div class="cursor-dot" id="dot7"></div>
+    <div class="cursor-dot" id="dot8"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">Brett Rabbiner</div>
+            <ul class="nav-links">
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <!-- Three.js Gyroscopic Atomic Model (Default) -->
+        <canvas id="atomCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: auto; opacity: 1; transition: opacity 0.8s ease;"></canvas>
+
+        <!-- Orbital Animation (On Hover) -->
+        <div class="orbital-overlay" id="orbitalOverlay">
+            <canvas id="orbitalCanvas" style="width: 100%; height: 100%;"></canvas>
+            
+            <div class="orbital-info">
+                <div class="orbital-title">ELECTRON ORBITAL:</div>
+                <div class="orbital-state" id="orbitalState">1s</div>
+            </div>
+
+            <div class="orbital-controls">
+                
+            </div>
+        </div>
+        
+        <div class="hero-content">
+            <h1>Creative Technologist</h1>
+            <p class="subtitle">Imaginative solutions to presented problems</p>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section class="projects" id="projects">
+        <h2 class="section-title">Selected Work</h2>
+        <div class="projects-grid">
+            <!-- Project 1 -->
+            <div class="project-card fade-in" onclick="openModal('project1')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Project Alpha</h3>
+                    <p class="project-tech">React • Node.js • MongoDB</p>
+                    <p class="project-description">A full-stack web application that demonstrates modern development practices and clean architecture.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 2 -->
+            <div class="project-card fade-in" onclick="openModal('project2')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Neural Network Viz</h3>
+                    <p class="project-tech">Python • TensorFlow • D3.js</p>
+                    <p class="project-description">Interactive visualization tool for understanding deep learning architectures and training processes.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Live Demo</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project-card fade-in" onclick="openModal('project3')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Mobile Innovation</h3>
+                    <p class="project-tech">React Native • Firebase • TypeScript</p>
+                    <p class="project-description">Cross-platform mobile application with real-time features and seamless user experience.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">App Store</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project 4 -->
+            <div class="project-card fade-in" onclick="openModal('project4')">
+                <div class="project-image"></div>
+                <div class="project-content">
+                    <h3 class="project-title">Cloud Architecture</h3>
+                    <p class="project-tech">AWS • Docker • Kubernetes</p>
+                    <p class="project-description">Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD.</p>
+                    <div class="project-links">
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">Documentation</a>
+                        <a href="#" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal for expanded project details -->
+    <div class="modal" id="projectModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-image" id="modalImage"></div>
+            <div class="modal-body">
+                <h3 id="modalTitle">Project Title</h3>
+                <p id="modalTech" class="project-tech">Technologies</p>
+                <div id="modalDescription">
+                    <p>Detailed project description goes here. This is where you can elaborate on the challenges, solutions, and technical details of your project.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Feature 1</li>
+                        <li>Feature 2</li>
+                        <li>Feature 3</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Description of challenges and how they were solved.</p>
+                </div>
+                <div class="project-links" id="modalLinks">
+                    <a href="#" class="project-link">Live Demo</a>
+                    <a href="#" class="project-link">GitHub</a>
+                    <a href="#" class="project-link">Case Study</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="contact-content">
+            <h2>Building better, together.</h2>
+            <p class="subtitle">Contact Info</p>
+            <div class="contact-links">
+                <a href="mailto:brabbs1@icloud.com" class="contact-link">
+                    <span>Email</span>
+                </a>
+                <a href="www.linkedin.com/in/brett-rabbiner-9020482a5" class="contact-link">
+                    <span>LinkedIn</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+
+        // Enhanced Grid Mesh System with improved scroll handling
+        class EnhancedGridMesh {
+            constructor() {
+                this.canvas = document.getElementById('meshCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.gridSize = 45;
+                this.influenceRadius = 150; // Increased for wider effect
+                this.isBreakingApart = false;
+                this.hasTriggeredBreak = false;
+                this.isReforming = false;
+                this.scrollOffset = 0;
+                this.lastScrollY = 0;
+                
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            init() {
+                this.resize();
+            }
+            
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+            }
+            
+            triggerBreakApart() {
+                if (!this.hasTriggeredBreak) {
+                    this.isBreakingApart = true;
+                    this.hasTriggeredBreak = true;
+                    this.isReforming = false;
+                }
+            }
+            
+            triggerReform() {
+                if (this.hasTriggeredBreak) {
+                    this.isReforming = true;
+                    this.isBreakingApart = false;
+                    
+                    setTimeout(() => {
+                        this.isReforming = false;
+                        this.hasTriggeredBreak = false;
+                    }, 2000);
+                }
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Smooth scroll-based opacity
+                const scrollPercent = Math.min(window.scrollY / (window.innerHeight * 0.8), 1);
+                let baseOpacity = 1 - (scrollPercent * 0.7);
+                
+                if (this.isBreakingApart) {
+                    baseOpacity *= Math.max(0, 1 - (scrollPercent * 1.5));
+                } else if (this.isReforming) {
+                    baseOpacity *= Math.min(1, (1 - scrollPercent) * 2);
+                }
+                
+                this.ctx.globalAlpha = Math.max(0, baseOpacity);
+                
+                // Draw enhanced grid with improved interaction
+                for (let x = 0; x <= this.width; x += this.gridSize) {
+                    for (let y = 0; y <= this.height; y += this.gridSize) {
+                        let lineX = x;
+                        let lineY = y;
+                        let color = '0, 0, 0';
+                        let opacity = 0.25;
+                        let lineWidth = 1;
+                        
+                        // Enhanced mouse interaction
+                        const dx = this.mouseX - x;
+                        const dy = this.mouseY - y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < this.influenceRadius && !this.isBreakingApart) {
+                            const force = (this.influenceRadius - distance) / this.influenceRadius;
+                            const pullStrength = force * force * 30; // Increased pull strength
+                            
+                            lineX = x + (dx / distance) * pullStrength;
+                            lineY = y + (dy / distance) * pullStrength;
+                            
+                            color = '192, 192, 192'; // Silver when influenced
+                            opacity = 0.4 + force * 0.6;
+                            lineWidth = 1 + force * 3;
+                        }
+                        
+                        this.ctx.strokeStyle = `rgba(${color}, ${opacity * baseOpacity})`;
+                        this.ctx.lineWidth = lineWidth;
+                        
+                        // Draw horizontal lines with improved smoothing
+                        if (x < this.width) {
+                            let nextX = x + this.gridSize;
+                            let nextY = y;
+                            
+                            const nextDx = this.mouseX - nextX;
+                            const nextDy = this.mouseY - nextY;
+                            const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+                            
+                            if (nextDistance < this.influenceRadius && !this.isBreakingApart) {
+                                const nextForce = (this.influenceRadius - nextDistance) / this.influenceRadius;
+                                const nextPull = nextForce * nextForce * 30;
+                                nextX = x + this.gridSize + (nextDx / nextDistance) * nextPull;
+                                nextY = y + (nextDy / nextDistance) * nextPull;
+                            }
+                            
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(lineX, lineY);
+                            this.ctx.lineTo(nextX, nextY);
+                            this.ctx.stroke();
+                        }
+                        
+                        // Draw vertical lines
+                        if (y < this.height) {
+                            let nextX = x;
+                            let nextY = y + this.gridSize;
+                            
+                            const nextDx = this.mouseX - nextX;
+                            const nextDy = this.mouseY - nextY;
+                            const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+                            
+                            if (nextDistance < this.influenceRadius && !this.isBreakingApart) {
+                                const nextForce = (this.influenceRadius - nextDistance) / this.influenceRadius;
+                                const nextPull = nextForce * nextForce * 30;
+                                nextX = x + (nextDx / nextDistance) * nextPull;
+                                nextY = y + this.gridSize + (nextDy / nextDistance) * nextPull;
+                            }
+                            
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(lineX, lineY);
+                            this.ctx.lineTo(nextX, nextY);
+                            this.ctx.stroke();
+                        }
+                        
+                        // Enhanced grid intersection points
+                        this.ctx.fillStyle = `rgba(${color}, ${opacity * 0.9 * baseOpacity})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(lineX, lineY, lineWidth * 0.8, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            animate() {
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.resize();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                // Improved scroll handling
+                let scrollTimeout;
+                window.addEventListener('scroll', () => {
+                    clearTimeout(scrollTimeout);
+                    
+                    const currentScrollY = window.scrollY;
+                    const scrollPercent = currentScrollY / (window.innerHeight * 0.5);
+                    
+                    if (scrollPercent > 0.4 && !this.hasTriggeredBreak) {
+                        this.triggerBreakApart();
+                    } else if (scrollPercent < 0.1 && this.hasTriggeredBreak) {
+                        this.triggerReform();
+                    }
+                    
+                    this.lastScrollY = currentScrollY;
+                    
+                    scrollTimeout = setTimeout(() => {
+                        // Stabilize after scroll ends
+                    }, 150);
+                });
+            }
+        }
+
+        // Initialize enhanced grid mesh
+        const gridMesh = new EnhancedGridMesh();
+
+        // Enhanced cursor system
+        const trails = [
+            document.getElementById('cursorTrail1'),
+            document.getElementById('cursorTrail2'),
+            document.getElementById('cursorTrail3')
+        ];
+        const dots = [
+            document.getElementById('dot1'),
+            document.getElementById('dot2'),
+            document.getElementById('dot3'),
+            document.getElementById('dot4'),
+            document.getElementById('dot5'),
+            document.getElementById('dot6'),
+            document.getElementById('dot7'),
+            document.getElementById('dot8')
+        ];
+
+        let mouseX = 0, mouseY = 0;
+        let trail1X = 0, trail1Y = 0, trail2X = 0, trail2Y = 0, trail3X = 0, trail3Y = 0;
+        let dotPositions = Array(8).fill().map(() => ({x: 0, y: 0}));
+        let mouseHistory = Array(20).fill().map(() => ({x: 0, y: 0}));
+
+        // Mouse tracking
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            mouseHistory.unshift({x: mouseX, y: mouseY});
+            if (mouseHistory.length > 20) mouseHistory.pop();
+        });
+
+        // Initialize enhanced cursor colors
+        function initializeCursorColors() {
+            const trailColors = [
+                'var(--accent-primary)',
+                'var(--accent-secondary)', 
+                'var(--accent-primary)'
+            ];
+            
+            trails.forEach((trail, i) => {
+                if (trail) {
+                    trail.style.background = trailColors[i];
+                    trail.style.boxShadow = `0 0 15px ${trailColors[i]}`;
+                }
+            });
+
+            const dotColors = [
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)',
+                'var(--accent-primary)',
+                'var(--accent-secondary)',
+                'var(--text-primary)'
+            ];
+
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    dot.style.background = dotColors[i];
+                    dot.style.boxShadow = `0 0 8px ${dotColors[i]}`;
+                }
+            });
+        }
+
+        // Main animation loop
+        function animateCursor() {
+            // Smooth trail interpolation with enhanced responsiveness
+            trail1X += (mouseX - trail1X) * 0.25;
+            trail1Y += (mouseY - trail1Y) * 0.25;
+            trail2X += (trail1X - trail2X) * 0.18;
+            trail2Y += (trail1Y - trail2Y) * 0.18;
+            trail3X += (trail2X - trail3X) * 0.12;
+            trail3Y += (trail2Y - trail3Y) * 0.12;
+
+            // Update dot positions with smooth following
+            dots.forEach((dot, i) => {
+                if (dot) {
+                    const delay = (i + 1) * 2;
+                    const targetIndex = Math.min(delay, mouseHistory.length - 1);
+                    const targetX = mouseHistory[targetIndex].x;
+                    const targetY = mouseHistory[targetIndex].y;
+                    
+                    dotPositions[i].x += (targetX - dotPositions[i].x) * 0.18;
+                    dotPositions[i].y += (targetY - dotPositions[i].y) * 0.18;
+                    
+                    dot.style.transform = `translate(${dotPositions[i].x - 2}px, ${dotPositions[i].y - 2}px)`;
+                }
+            });
+            
+            // Apply trail transforms
+            if (trails[0]) trails[0].style.transform = `translate(${trail1X - 4}px, ${trail1Y - 4}px)`;
+            if (trails[1]) trails[1].style.transform = `translate(${trail2X - 4}px, ${trail2Y - 4}px)`;
+            if (trails[2]) trails[2].style.transform = `translate(${trail3X - 4}px, ${trail3Y - 4}px)`;
+            
+            requestAnimationFrame(animateCursor);
+        }
+
+        // Enhanced hover effects
+        const hoverElements = document.querySelectorAll('a, button, .project-card');
+        hoverElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                trails.forEach(trail => {
+                    if (trail) trail.style.transform += ' scale(1.8)';
+                });
+            });
+            el.addEventListener('mouseleave', () => {
+                trails.forEach(trail => {
+                    if (trail) trail.style.transform = trail.style.transform.replace(' scale(1.8)', '');
+                });
+            });
+        });
+
+        // Global animation references
+        let atomAnimationSystem = null;
+        let orbitalAnimationSystem = null;
+
+        // Initialize everything
+        function initializeElements() {
+            initializeCursorColors();
+            initOrbitalAnimation();
+            initGyroscopicAtom();
+            setupSimpleHover();
+        }
+
+        // Simple hover detection that actually works
+        function setupSimpleHover() {
+            const heroSection = document.querySelector('.hero');
+            if (!heroSection) return;
+            
+            let isHovered = false;
+            
+            // Use mousemove to detect when cursor is in center area
+            heroSection.addEventListener('mousemove', (e) => {
+                const rect = heroSection.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                
+                // Calculate distance from center
+                const distance = Math.sqrt(
+                    Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2)
+                );
+                
+                const radius = 150; // 300px diameter = 150px radius
+                
+                if (distance <= radius && !isHovered) {
+                    // Entered circle - show orbital animation
+                    isHovered = true;
+                    console.log('Entered center - showing orbital animation');
+                    
+                    const atomCanvas = document.getElementById('atomCanvas');
+                    const orbitalOverlay = document.getElementById('orbitalOverlay');
+                    
+                    if (atomCanvas) atomCanvas.style.opacity = '0';
+                    if (orbitalOverlay) orbitalOverlay.style.opacity = '1';
+                    if (orbitalAnimationSystem) orbitalAnimationSystem.show();
+                    
+                } else if (distance > radius && isHovered) {
+                    // Left circle - show Bohr model
+                    isHovered = false;
+                    console.log('Left center - showing Bohr model');
+                    
+                    const atomCanvas = document.getElementById('atomCanvas');
+                    const orbitalOverlay = document.getElementById('orbitalOverlay');
+                    
+                    if (atomCanvas) atomCanvas.style.opacity = '1';
+                    if (orbitalOverlay) orbitalOverlay.style.opacity = '0';
+                    if (orbitalAnimationSystem) orbitalAnimationSystem.hide();
+                }
+            });
+            
+            console.log('Simple hover detection ready');
+        }
+
+        // Gyroscopic Atomic Model using Three.js
+        function initGyroscopicAtom() {
+            const canvas = document.getElementById('atomCanvas');
+            if (!canvas) return;
+
+            // Scene setup
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0); // Transparent background
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0x888888, 1.2, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            // Nucleus - clustered protons and neutrons (BIGGER)
+            const nucleusGroup = new THREE.Group();
+            const nucleusRadius = 0.6; // Increased from 0.4
+            
+            // Nitrogen has 7 protons and 7 neutrons
+            const protons = [];
+            const neutrons = [];
+            
+            // Create protons (darker gray) - BIGGER
+            for (let i = 0; i < 7; i++) {
+                const protonGeometry = new THREE.SphereGeometry(0.25, 16, 16); // Increased from 0.18
+                const protonMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x333333,
+                    emissive: 0x111111,
+                    emissiveIntensity: 0.2
+                });
+                const proton = new THREE.Mesh(protonGeometry, protonMaterial);
+                
+                const phi = Math.acos(-1 + (2 * i) / 7);
+                const theta = Math.sqrt(7 * Math.PI) * phi;
+                const radius = 0.3; // Increased from 0.2
+                
+                proton.position.x = radius * Math.cos(theta) * Math.sin(phi);
+                proton.position.y = radius * Math.sin(theta) * Math.sin(phi);
+                proton.position.z = radius * Math.cos(phi);
+                
+                nucleusGroup.add(proton);
+                protons.push({
+                    mesh: proton,
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.008,
+                        (Math.random() - 0.5) * 0.008,
+                        (Math.random() - 0.5) * 0.008
+                    ),
+                    radius: 0.25
+                });
+            }
+            
+            // Create neutrons (lighter gray) - BIGGER
+            for (let i = 0; i < 7; i++) {
+                const neutronGeometry = new THREE.SphereGeometry(0.25, 16, 16); // Increased from 0.18
+                const neutronMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x666666,
+                    emissive: 0x222222,
+                    emissiveIntensity: 0.1
+                });
+                const neutron = new THREE.Mesh(neutronGeometry, neutronMaterial);
+                
+                const phi = Math.acos(-1 + (2 * i) / 7) + 0.3;
+                const theta = Math.sqrt(7 * Math.PI) * phi + Math.PI;
+                const radius = 0.25; // Increased from 0.15
+                
+                neutron.position.x = radius * Math.cos(theta) * Math.sin(phi);
+                neutron.position.y = radius * Math.sin(theta) * Math.sin(phi);
+                neutron.position.z = radius * Math.cos(phi);
+                
+                nucleusGroup.add(neutron);
+                neutrons.push({
+                    mesh: neutron,
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.006,
+                        (Math.random() - 0.5) * 0.006,
+                        (Math.random() - 0.5) * 0.006
+                    ),
+                    radius: 0.25
+                });
+            }
+            
+            scene.add(nucleusGroup);
+
+            // Orbital system
+            const orbitalGroup = new THREE.Group();
+            scene.add(orbitalGroup);
+
+            // Create orbital rings and electrons - BIGGER
+            const orbitals = [];
+            const electrons = [];
+
+            // First shell (2 electrons) - moderate size
+            const shell1 = createOrbital(2.5, 2, 0x444444, 0x333333); // Between original 2 and previous 3
+            orbitals.push(shell1);
+
+            // Second shell (5 electrons) - multiple rings for gyroscopic effect - moderate size
+            const shell2a = createOrbital(4.2, 2, 0x333333, 0x222222); // Between original 3.5 and previous 5
+            const shell2b = createOrbital(4.2, 2, 0x555555, 0x444444); // Between original 3.5 and previous 5
+            const shell2c = createOrbital(4.2, 1, 0x222222, 0x333333); // Between original 3.5 and previous 5
+            
+            orbitals.push(shell2a, shell2b, shell2c);
+
+            function createOrbital(radius, numElectrons, electronColor, ringColor) {
+                const orbitalGroup = new THREE.Group();
+                
+                // Create orbital ring - moderate size
+                const ringGeometry = new THREE.RingGeometry(radius - 0.06, radius + 0.06, 64); // Between original 0.05 and previous 0.08
+                const ringMaterial = new THREE.MeshBasicMaterial({ 
+                    color: ringColor,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                orbitalGroup.add(ring);
+
+                // Create electrons for this orbital - moderate size
+                const orbitalElectrons = [];
+                for (let i = 0; i < numElectrons; i++) {
+                    const electronGeometry = new THREE.SphereGeometry(0.10, 16, 16); // Between original 0.08 and previous 0.12
+                    const electronMaterial = new THREE.MeshPhongMaterial({ 
+                        color: electronColor,
+                        emissive: electronColor,
+                        emissiveIntensity: 0.3
+                    });
+                    const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+                    
+                    const angle = (i / numElectrons) * Math.PI * 2;
+                    electron.position.x = Math.cos(angle) * radius;
+                    electron.position.z = Math.sin(angle) * radius;
+                    
+                    orbitalGroup.add(electron);
+                    orbitalElectrons.push({
+                        mesh: electron,
+                        angle: angle,
+                        radius: radius,
+                        speed: 0.01 + Math.random() * 0.005
+                    });
+                }
+                
+                electrons.push(...orbitalElectrons);
+                scene.add(orbitalGroup);
+                
+                return {
+                    group: orbitalGroup,
+                    electrons: orbitalElectrons,
+                    rotationSpeed: {
+                        x: (Math.random() - 0.5) * 0.02,
+                        y: (Math.random() - 0.5) * 0.02,
+                        z: (Math.random() - 0.5) * 0.02
+                    }
+                };
+            }
+
+            // Mouse controls - simplified approach
+            let atomMouseX = 0, atomMouseY = 0;
+            let targetRotationX = 0, targetRotationY = 0;
+            
+            document.addEventListener('mousemove', (event) => {
+                atomMouseX = (event.clientX - window.innerWidth / 2) / window.innerWidth;
+                atomMouseY = (event.clientY - window.innerHeight / 2) / window.innerHeight;
+                targetRotationX = atomMouseY * Math.PI * 0.3;
+                targetRotationY = atomMouseX * Math.PI * 0.3;
+            });
+
+            // Set camera position for moderate size
+            camera.position.z = 11; // Between original 12 and previous 10
+
+            // Animation loop
+            function animateAtom() {
+                requestAnimationFrame(animateAtom);
+
+                // Rotate the entire atom model based on mouse
+                orbitalGroup.rotation.x += (targetRotationX - orbitalGroup.rotation.x) * 0.05;
+                orbitalGroup.rotation.y += (targetRotationY - orbitalGroup.rotation.y) * 0.05;
+
+                // Animate orbitals with gyroscopic motion
+                orbitals.forEach((orbital) => {
+                    orbital.group.rotation.x += orbital.rotationSpeed.x;
+                    orbital.group.rotation.y += orbital.rotationSpeed.y;
+                    orbital.group.rotation.z += orbital.rotationSpeed.z;
+                    
+                    orbital.electrons.forEach(electronData => {
+                        electronData.angle += electronData.speed;
+                        electronData.mesh.position.x = Math.cos(electronData.angle) * electronData.radius;
+                        electronData.mesh.position.z = Math.sin(electronData.angle) * electronData.radius;
+                        electronData.mesh.position.y = Math.sin(electronData.angle * 3) * 0.1;
+                    });
+                });
+
+                // Nucleus physics simulation
+                const allNucleusParticles = [...protons, ...neutrons];
+                
+                allNucleusParticles.forEach((particle, index) => {
+                    particle.mesh.position.add(particle.velocity);
+                    
+                    const distanceFromCenter = particle.mesh.position.length();
+                    if (distanceFromCenter + particle.radius > nucleusRadius) {
+                        const normal = particle.mesh.position.clone().normalize();
+                        particle.velocity.reflect(normal);
+                        particle.velocity.multiplyScalar(0.7);
+                        particle.mesh.position.copy(normal.multiplyScalar(nucleusRadius - particle.radius));
+                    }
+                    
+                    for (let j = index + 1; j < allNucleusParticles.length; j++) {
+                        const other = allNucleusParticles[j];
+                        const distance = particle.mesh.position.distanceTo(other.mesh.position);
+                        const minDistance = particle.radius + other.radius;
+                        
+                        if (distance < minDistance && distance > 0) {
+                            const normal = particle.mesh.position.clone().sub(other.mesh.position).normalize();
+                            const overlap = minDistance - distance;
+                            const pushAmount = overlap * 0.3;
+                            particle.mesh.position.add(normal.clone().multiplyScalar(pushAmount));
+                            other.mesh.position.sub(normal.clone().multiplyScalar(pushAmount));
+                            
+                            const relativeVelocity = particle.velocity.clone().sub(other.velocity);
+                            const velocityAlongNormal = relativeVelocity.dot(normal);
+                            
+                            if (velocityAlongNormal > 0) {
+                                const impulse = normal.clone().multiplyScalar(velocityAlongNormal * 0.3);
+                                particle.velocity.sub(impulse);
+                                other.velocity.add(impulse);
+                            }
+                        }
+                    }
+                    
+                    particle.velocity.multiplyScalar(0.95);
+                    particle.mesh.material.emissiveIntensity = 0.2 + Math.sin(Date.now() * 0.003 + index) * 0.1;
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            // Handle window resize for the atomic model
+            const atomResizeHandler = () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            };
+            window.addEventListener('resize', atomResizeHandler);
+
+            animateAtom();
+
+            // Store references
+            atomAnimationSystem = {
+                scene,
+                camera,
+                renderer,
+                resize: atomResizeHandler
+            };
+        }
+
+        // Electron Orbital Animation System
+        function initOrbitalAnimation() {
+            const canvas = document.getElementById('orbitalCanvas');
+            const overlay = document.getElementById('orbitalOverlay');
+            const stateDisplay = document.getElementById('orbitalState');
+            
+            if (!canvas || !overlay) return;
+
+            // Scene setup
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 7); // Between original 8 and previous 6
+
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Fixed number of particles
+            const PARTICLE_COUNT = 3500;
+
+            // Generate orbital positions - BIGGER
+            const generateOrbitalPositions = (type) => {
+                const positions = [];
+                
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    let x, y, z;
+                    
+                    switch (type) {
+                        case 's': // Spherical orbital - moderate size
+                            const theta = Math.random() * Math.PI * 2;
+                            const phi = Math.acos(1 - 2 * Math.random());
+                            const r = 2.5 + Math.random() * 1.0; // Between original 2+0.8 and previous 3+1.2
+                            
+                            x = r * Math.sin(phi) * Math.cos(theta);
+                            y = r * Math.sin(phi) * Math.sin(theta);
+                            z = r * Math.cos(phi);
+                            break;
+                            
+                        case 'px': // p orbital along x-axis - moderate size
+                            const theta_px = Math.random() * Math.PI * 2;
+                            const phi_px = Math.acos(1 - 2 * Math.random());
+                            const r_px = 3.0 * Math.abs(Math.sin(phi_px)) + Math.random() * 0.5; // Between original 2.5+0.4 and previous 3.5+0.6
+                            
+                            x = r_px * Math.sin(phi_px) * Math.cos(theta_px);
+                            y = r_px * Math.sin(phi_px) * Math.sin(theta_px) * 0.4;
+                            z = r_px * Math.cos(phi_px) * 0.4;
+                            
+                            if (Math.abs(x) < 0.35) { // Between original 0.3 and previous 0.4
+                                x = x > 0 ? 0.35 + Math.random() * 2.5 : -0.35 - Math.random() * 2.5; // Between ranges
+                            }
+                            break;
+                            
+                        case 'py': // p orbital along y-axis - moderate size
+                            const theta_py = Math.random() * Math.PI * 2;
+                            const phi_py = Math.acos(1 - 2 * Math.random());
+                            const r_py = 3.0 * Math.abs(Math.sin(phi_py)) + Math.random() * 0.5; // Between ranges
+                            
+                            x = r_py * Math.sin(phi_py) * Math.cos(theta_py) * 0.4;
+                            y = r_py * Math.sin(phi_py) * Math.sin(theta_py);
+                            z = r_py * Math.cos(phi_py) * 0.4;
+                            
+                            if (Math.abs(y) < 0.35) { // Between original 0.3 and previous 0.4
+                                y = y > 0 ? 0.35 + Math.random() * 2.5 : -0.35 - Math.random() * 2.5; // Between ranges
+                            }
+                            break;
+                            
+                        case 'pz': // p orbital along z-axis - moderate size
+                            const theta_pz = Math.random() * Math.PI * 2;
+                            const phi_pz = Math.acos(1 - 2 * Math.random());
+                            const r_pz = 3.0 * Math.abs(Math.cos(phi_pz)) + Math.random() * 0.5; // Between ranges
+                            
+                            x = r_pz * Math.sin(phi_pz) * Math.cos(theta_pz) * 0.4;
+                            y = r_pz * Math.sin(phi_pz) * Math.sin(theta_pz) * 0.4;
+                            z = r_pz * Math.cos(phi_pz);
+                            
+                            if (Math.abs(z) < 0.35) { // Between original 0.3 and previous 0.4
+                                z = z > 0 ? 0.35 + Math.random() * 2.5 : -0.35 - Math.random() * 2.5; // Between ranges
+                            }
+                            break;
+                            
+                        case 'd': // d orbital (cloverleaf pattern) - moderate size
+                            const theta_d = Math.random() * Math.PI * 2;
+                            const phi_d = Math.random() * Math.PI;
+                            const r_d = 2.7 * Math.abs(Math.sin(2 * theta_d) * Math.sin(phi_d)) + Math.random() * 0.6; // Between original 2.2+0.5 and previous 3.2+0.7
+                            
+                            x = r_d * Math.sin(phi_d) * Math.cos(theta_d);
+                            y = r_d * Math.sin(phi_d) * Math.sin(theta_d);
+                            z = r_d * Math.cos(phi_d) * 0.7;
+                            break;
+                            
+                        default:
+                            x = y = z = 0;
+                    }
+                    
+                    positions.push(x, y, z);
+                }
+                
+                return new Float32Array(positions);
+            };
+
+            // Create particle system
+            const geometry = new THREE.BufferGeometry();
+            const colors = new Float32Array(PARTICLE_COUNT * 3);
+            
+            // Set monotone colors
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const grayValue = 0.2 + Math.random() * 0.2; // Varying shades of gray
+                colors[i * 3] = grayValue;     // R
+                colors[i * 3 + 1] = grayValue; // G
+                colors[i * 3 + 2] = grayValue; // B
+            }
+            
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.06, // Between original 0.05 and previous 0.07
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            // Orbital types and initial setup
+            const orbitalTypes = ['s', 'px', 'py', 'pz', 'd'];
+            const orbitalNames = ['1s', '2px', '2py', '2pz', '3d'];
+            let currentIndex = 0;
+            
+            // Generate all orbital configurations
+            const orbitalConfigs = {};
+            orbitalTypes.forEach(type => {
+                orbitalConfigs[type] = generateOrbitalPositions(type);
+            });
+
+            // Set initial positions
+            const currentPositions = orbitalConfigs[orbitalTypes[currentIndex]].slice();
+            geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            // Animation variables
+            let displayTime = 0;
+            let isTransitioning = false;
+            let transitionProgress = 0;
+            let nextIndex = 1;
+            let startPositions = null;
+            let targetPositions = null;
+            let animationId = null;
+            let isVisible = true; // Start visible by default
+            
+            const DISPLAY_DURATION = 5; // 5 seconds
+            const TRANSITION_DURATION = 2; // 2 seconds for morphing
+
+            // Smooth interpolation function
+            const smoothstep = (t) => {
+                return t * t * (3 - 2 * t);
+            };
+
+            // Animation loop
+            const animate = () => {
+                if (!isVisible) return;
+
+                // Continuous rotation
+                if (particles) {
+                    particles.rotation.y += 0.008;
+                    particles.rotation.x += 0.003;
+                }
+
+                if (!isTransitioning) {
+                    displayTime += 0.016;
+                    
+                    if (displayTime >= DISPLAY_DURATION) {
+                        // Start transition
+                        isTransitioning = true;
+                        transitionProgress = 0;
+                        nextIndex = (currentIndex + 1) % orbitalTypes.length;
+                        
+                        startPositions = currentPositions.slice();
+                        targetPositions = orbitalConfigs[orbitalTypes[nextIndex]];
+                        
+                        displayTime = 0;
+                    }
+                } else {
+                    // Handle morphing transition
+                    transitionProgress += 0.016 / TRANSITION_DURATION;
+                    
+                    if (transitionProgress >= 1) {
+                        // Complete transition
+                        currentIndex = nextIndex;
+                        if (stateDisplay) {
+                            stateDisplay.textContent = orbitalNames[currentIndex];
+                        }
+                        isTransitioning = false;
+                        transitionProgress = 0;
+                        
+                        // Copy final positions
+                        for (let i = 0; i < currentPositions.length; i++) {
+                            currentPositions[i] = targetPositions[i];
+                        }
+                    } else {
+                        // Smooth interpolation between positions
+                        const t = smoothstep(transitionProgress);
+                        
+                        for (let i = 0; i < currentPositions.length; i++) {
+                            currentPositions[i] = startPositions[i] + (targetPositions[i] - startPositions[i]) * t;
+                        }
+                    }
+                    
+                    // Update geometry
+                    geometry.attributes.position.needsUpdate = true;
+                }
+
+                renderer.render(scene, camera);
+                animationId = requestAnimationFrame(animate);
+            };
+
+            // Handle resize
+            const handleResize = () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            };
+            window.addEventListener('resize', handleResize);
+
+            // Public methods
+            const orbitalSystem = {
+                show: () => {
+                    isVisible = true;
+                    overlay.classList.add('active');
+                    if (!animationId) {
+                        animate();
+                    }
+                },
+                hide: () => {
+                    isVisible = false;
+                    overlay.classList.remove('active');
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                        animationId = null;
+                    }
+                },
+                dispose: () => {
+                    window.removeEventListener('resize', handleResize);
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                    geometry.dispose();
+                    material.dispose();
+                    renderer.dispose();
+                }
+            };
+
+            // Store reference - don't start orbital animation by default anymore
+            orbitalAnimationSystem = orbitalSystem;
+            
+            return orbitalSystem;
+        }
+
+        // Loading screen
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.transform = 'scale(0.95)';
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 800);
+                }
+            }, 2500);
+        });
+
+        // DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeElements);
+        } else {
+            initializeElements();
+        }
+
+        // Start animations
+        animateCursor();
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Project modal functionality
+        const projectData = {
+            project1: {
+                title: "Project Alpha",
+                tech: "React • Node.js • MongoDB • GraphQL",
+                description: `
+                    <p>A comprehensive full-stack web application that showcases modern development practices and clean architecture patterns.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time data synchronization with WebSocket integration</li>
+                        <li>Advanced user authentication and authorization</li>
+                        <li>Responsive design with mobile-first approach</li>
+                        <li>RESTful API with GraphQL endpoint</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Implemented complex state management across multiple components while maintaining optimal performance through code splitting and lazy loading strategies.</p>
+                `
+            },
+            project2: {
+                title: "Neural Network Visualizer",
+                tech: "Python • TensorFlow • D3.js • Flask",
+                description: `
+                    <p>An interactive web application for visualizing and understanding deep learning architectures and training processes in real-time.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Dynamic network architecture visualization</li>
+                        <li>Real-time training metrics and loss curves</li>
+                        <li>Interactive layer exploration and parameter tuning</li>
+                        <li>Support for multiple neural network types</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Optimized rendering performance for large networks while maintaining smooth animations and real-time data streaming from the training backend.</p>
+                `
+            },
+            project3: {
+                title: "Mobile Innovation App",
+                tech: "React Native • Firebase • TypeScript • Redux",
+                description: `
+                    <p>Cross-platform mobile application with real-time features and seamless user experience across iOS and Android platforms.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Real-time messaging and notifications</li>
+                        <li>Offline-first architecture with data synchronization</li>
+                        <li>Advanced camera integration and image processing</li>
+                        <li>Social features with user profiles and connections</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Achieved 99.9% crash-free sessions by implementing robust error handling and optimizing memory usage for low-end devices.</p>
+                `
+            },
+            project4: {
+                title: "Cloud Architecture Platform",
+                tech: "AWS • Docker • Kubernetes • Terraform",
+                description: `
+                    <p>Scalable microservices architecture deployed on cloud infrastructure with automated CI/CD pipelines and monitoring.</p>
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li>Auto-scaling microservices with load balancing</li>
+                        <li>Automated deployment with zero-downtime releases</li>
+                        <li>Comprehensive monitoring and alerting system</li>
+                        <li>Infrastructure as Code with version control</li>
+                    </ul>
+                    <h4>Technical Challenges:</h4>
+                    <p>Reduced deployment time by 80% and achieved 99.99% uptime through implementing blue-green deployments and comprehensive health checks.</p>
+                `
+            }
+        };
+
+        function openModal(projectId) {
+            const modal = document.getElementById('projectModal');
+            const project = projectData[projectId];
+            
+            if (modal && project) {
+                document.getElementById('modalTitle').textContent = project.title;
+                document.getElementById('modalTech').textContent = project.tech;
+                document.getElementById('modalDescription').innerHTML = project.description;
+                
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('projectModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Modal event listeners
+        document.getElementById('projectModal').addEventListener('click', (e) => {
+            if (e.target.id === 'projectModal') {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Intersection Observer
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

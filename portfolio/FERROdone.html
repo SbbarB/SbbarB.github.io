@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monochrome Ferrofluid Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0xffffff, 1);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Mouse tracking
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        let mouseWorldPos = new THREE.Vector3(0, 0, 0);
+        
+        // Monochrome color scheme - shades of gray
+        const colors = [
+            0x000000, // Black
+            0x333333, // Dark gray
+            0x666666, // Medium gray
+            0x999999, // Light gray
+            0xcccccc, // Very light gray
+        ];
+        
+        // Store all ferrofluid objects
+        const ferrofluids = [];
+        let nextFerrofluidId = 0;
+        
+        // Add movement physics properties to each ferrofluid
+        function addMovementPhysics(ferrofluid) {
+            ferrofluid.velocity = new THREE.Vector3(0, 0, 0);
+            ferrofluid.originalPosition = ferrofluid.mesh.position.clone();
+            ferrofluid.mass = ferrofluid.isMain ? 2.0 : 1.0;
+            ferrofluid.id = nextFerrofluidId++;
+            ferrofluid.isMerging = false;
+            ferrofluid.separationForce = new THREE.Vector3(0, 0, 0);
+        }
+        
+        // Create main large black ferrofluid in center
+        function createMainFerrofluid() {
+            const sphereRadius = 3.5;
+            const subdivisions = 128;
+            const geometry = new THREE.SphereGeometry(sphereRadius, subdivisions, subdivisions);
+            
+            const originalPositions = geometry.attributes.position.array.slice();
+            const vertexCount = geometry.attributes.position.count;
+            const velocities = new Float32Array(vertexCount);
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x000000,
+                shininess: 150,
+                specular: 0x666666,
+                transparent: false,
+                side: THREE.DoubleSide
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(0, 0, 0);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            
+            ferrofluids.push({
+                mesh: mesh,
+                geometry: geometry,
+                originalPositions: originalPositions,
+                velocities: velocities,
+                vertexCount: vertexCount,
+                radius: sphereRadius,
+                isMain: true
+            });
+            
+            addMovementPhysics(ferrofluids[ferrofluids.length - 1]);
+        }
+        
+        // Create smaller monochrome ferrofluids scattered around
+        function createSmallFerrofluids() {
+            const numSmall = 12;
+            const smallRadius = 1.8;
+            const subdivisions = 96;
+            const mainRadius = 3.5;
+            const minDistance = 1.5;
+            
+            const placedPositions = [new THREE.Vector3(0, 0, 0)];
+            
+            for (let i = 0; i < numSmall; i++) {
+                const geometry = new THREE.SphereGeometry(smallRadius, subdivisions, subdivisions);
+                
+                const originalPositions = geometry.attributes.position.array.slice();
+                const vertexCount = geometry.attributes.position.count;
+                const velocities = new Float32Array(vertexCount);
+                
+                const material = new THREE.MeshPhongMaterial({
+                    color: colors[i % colors.length],
+                    shininess: 150,
+                    specular: 0x888888,
+                    transparent: false,
+                    side: THREE.DoubleSide
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Find non-overlapping position
+                let position;
+                let attempts = 0;
+                const maxAttempts = 100;
+                
+                do {
+                    const angle = (i / numSmall) * Math.PI * 2 + (Math.random() - 0.5) * 1.0;
+                    const distance = 7 + Math.random() * 12;
+                    const height = (Math.random() - 0.5) * 14;
+                    
+                    position = new THREE.Vector3(
+                        Math.cos(angle) * distance,
+                        height,
+                        Math.sin(angle) * distance
+                    );
+                    
+                    attempts++;
+                } while (!isPositionValid(position, placedPositions, smallRadius, mainRadius, minDistance) && attempts < maxAttempts);
+                
+                if (attempts >= maxAttempts) {
+                    const fallbackAngle = (i / numSmall) * Math.PI * 2;
+                    position = new THREE.Vector3(
+                        Math.cos(fallbackAngle) * 20,
+                        (Math.random() - 0.5) * 10,
+                        Math.sin(fallbackAngle) * 20
+                    );
+                }
+                
+                mesh.position.copy(position);
+                placedPositions.push(position);
+                
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                
+                ferrofluids.push({
+                    mesh: mesh,
+                    geometry: geometry,
+                    originalPositions: originalPositions,
+                    velocities: velocities,
+                    vertexCount: vertexCount,
+                    radius: smallRadius,
+                    isMain: false
+                });
+                
+                addMovementPhysics(ferrofluids[ferrofluids.length - 1]);
+            }
+        }
+        
+        // Check if position is valid (no overlapping)
+        function isPositionValid(newPos, existingPositions, newRadius, mainRadius, minGap) {
+            for (let j = 0; j < existingPositions.length; j++) {
+                const existingPos = existingPositions[j];
+                const distance = newPos.distanceTo(existingPos);
+                
+                let requiredDistance;
+                if (j === 0) {
+                    requiredDistance = mainRadius + newRadius + minGap;
+                } else {
+                    requiredDistance = newRadius + newRadius + minGap;
+                }
+                
+                if (distance < requiredDistance) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Check for merging and separation between ferrofluids
+        function updateFerrofluidInteractions() {
+            for (let i = 0; i < ferrofluids.length; i++) {
+                ferrofluids[i].separationForce.set(0, 0, 0);
+                
+                for (let j = i + 1; j < ferrofluids.length; j++) {
+                    const ferroA = ferrofluids[i];
+                    const ferroB = ferrofluids[j];
+                    
+                    const distance = ferroA.mesh.position.distanceTo(ferroB.mesh.position);
+                    const combinedRadius = ferroA.radius + ferroB.radius;
+                    const mergeThreshold = combinedRadius * 0.8; // More generous merge threshold
+                    const separationThreshold = combinedRadius * 1.5; // Wider separation zone
+                    
+                    // MERGING: When ferrofluids get close enough
+                    if (distance < mergeThreshold && !ferroA.isMerging && !ferroB.isMerging) {
+                        performSimpleMerge(ferroA, ferroB);
+                    }
+                    // ATTRACTION: Gentle pull when moderately close (slower attraction)
+                    else if (distance < separationThreshold && distance > mergeThreshold) {
+                        const attractDirection = ferroB.mesh.position.clone().sub(ferroA.mesh.position).normalize();
+                        const attractForce = 0.0004; // Reduced from 0.0008 for slower attraction
+                        
+                        ferroA.velocity.add(attractDirection.clone().multiplyScalar(attractForce));
+                        ferroB.velocity.add(attractDirection.clone().multiplyScalar(-attractForce));
+                    }
+                    // SEPARATION: Only when too close but not merging
+                    else if (distance < combinedRadius * 1.1 && distance > mergeThreshold) {
+                        const repelDirection = ferroA.mesh.position.clone().sub(ferroB.mesh.position).normalize();
+                        const repelForce = (combinedRadius * 1.1 - distance) * 0.001; // Gentler repulsion
+                        
+                        ferroA.separationForce.add(repelDirection.clone().multiplyScalar(repelForce));
+                        ferroB.separationForce.add(repelDirection.clone().multiplyScalar(-repelForce));
+                    }
+                }
+            }
+        }
+        
+        // Simple merging function
+        function performSimpleMerge(ferroA, ferroB) {
+            const absorber = ferroA.radius >= ferroB.radius ? ferroA : ferroB;
+            const absorbed = ferroA.radius >= ferroB.radius ? ferroB : ferroA;
+            
+            // Update absorber properties
+            const newRadius = Math.pow(Math.pow(absorber.radius, 3) + Math.pow(absorbed.radius, 3), 1/3);
+            absorber.radius = newRadius;
+            absorber.mass += absorbed.mass;
+            absorber.isMain = newRadius > 2.5;
+            
+            // Remove absorbed ferrofluid
+            scene.remove(absorbed.mesh);
+            const absorbedIndex = ferrofluids.indexOf(absorbed);
+            if (absorbedIndex > -1) {
+                ferrofluids.splice(absorbedIndex, 1);
+            }
+        }
+        
+        // Enhanced lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(10, 10, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        const rimLight = new THREE.DirectionalLight(0x8888ff, 0.4);
+        rimLight.position.set(-8, 5, -8);
+        scene.add(rimLight);
+        
+        const frontLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        frontLight.position.set(0, 0, 15);
+        scene.add(frontLight);
+        
+        // Create invisible plane for mouse ray casting
+        const planeGeometry = new THREE.PlaneGeometry(40, 30);
+        const planeMaterial = new THREE.MeshBasicMaterial({ 
+            transparent: true, 
+            opacity: 0,
+            side: THREE.DoubleSide
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        scene.add(plane);
+        
+        // Position camera
+        camera.position.set(0, 3, 25);
+        camera.lookAt(0, 0, 0);
+        
+        // Mouse movement handler
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(plane);
+            
+            if (intersects.length > 0) {
+                mouseWorldPos.copy(intersects[0].point);
+            }
+        }
+        
+        window.addEventListener('mousemove', onMouseMove);
+        
+        // Ferrofluid physics with cursor-centric spikes and smooth movement
+        function updateFerrofluid(ferrofluid) {
+            const positions = ferrofluid.geometry.attributes.position.array;
+            const time = Date.now() * 0.001;
+            
+            // MAGNETIC ATTRACTION - Move ferrofluid toward mouse (smoother)
+            const ferrofluidCenter = ferrofluid.mesh.position;
+            const distanceToMouse = ferrofluidCenter.distanceTo(mouseWorldPos);
+            
+            if (distanceToMouse > 0.5 && distanceToMouse < 25) {
+                const attractionDirection = mouseWorldPos.clone().sub(ferrofluidCenter).normalize();
+                const maxForce = ferrofluid.isMain ? 0.006 : 0.009; // Reduced for smoothness
+                const magneticForce = maxForce / (distanceToMouse * 0.3 + 1);
+                
+                ferrofluid.velocity.add(attractionDirection.multiplyScalar(magneticForce));
+            }
+            
+            // Apply separation forces
+            ferrofluid.velocity.add(ferrofluid.separationForce);
+            
+            // Smoother damping and position update
+            ferrofluid.velocity.multiplyScalar(0.88); // Increased damping for smoothness
+            ferrofluidCenter.add(ferrofluid.velocity);
+            
+            // Gentle restoring force when far from mouse
+            if (distanceToMouse > 15) {
+                const restoreDirection = ferrofluid.originalPosition.clone().sub(ferrofluidCenter);
+                const restoreForce = restoreDirection.multiplyScalar(0.001); // Gentler restore
+                ferrofluidCenter.add(restoreForce);
+            }
+            
+            // CURSOR-CENTRIC SPIKE DEFORMATION (spikes grow toward mouse cursor)
+            for (let i = 0; i < ferrofluid.vertexCount; i++) {
+                const i3 = i * 3;
+                
+                const originalX = ferrofluid.originalPositions[i3];
+                const originalY = ferrofluid.originalPositions[i3 + 1];
+                const originalZ = ferrofluid.originalPositions[i3 + 2];
+                
+                const vertex = new THREE.Vector3(originalX, originalY, originalZ);
+                const vertexNormal = vertex.clone().normalize();
+                
+                // Transform to world space
+                const worldVertex = vertex.clone().add(ferrofluid.mesh.position);
+                const vertexDistanceToMouse = worldVertex.distanceTo(mouseWorldPos);
+                
+                if (vertexDistanceToMouse < 0.1) continue;
+                
+                // Calculate direction from vertex to mouse cursor (cursor-centric)
+                const magneticField = mouseWorldPos.clone().sub(worldVertex);
+                const magneticDirection = magneticField.normalize();
+                const fieldAlignment = vertexNormal.dot(magneticDirection);
+                
+                // Distance-based magnetic influence (smoother falloff)
+                const maxInfluence = ferrofluid.isMain ? 15 : 12; // Increased range
+                const distanceInfluence = Math.max(0, (maxInfluence - vertexDistanceToMouse) / maxInfluence);
+                const smoothInfluence = Math.pow(distanceInfluence, 1.2); // Smoother curve
+                
+                // Base radius with subtle breathing
+                const organicBreathing = Math.sin(time * 0.4 + vertex.length() * 0.8) * 0.015; // Slower, smoother
+                let targetRadius = ferrofluid.radius + organicBreathing;
+                
+                // Create spikes toward mouse cursor when nearby
+                if (fieldAlignment > 0 && smoothInfluence > 0.02) {
+                    const angleFromFieldLine = Math.acos(Math.max(0, Math.min(1, fieldAlignment)));
+                    let totalSpikeStrength = 0;
+                    
+                    // Scale spike strength based on ferrofluid size (toned down)
+                    const sizeScale = ferrofluid.radius / 1.8;
+                    const spikeScale = (ferrofluid.isMain ? 0.8 : 0.6) * sizeScale; // Reduced overall intensity
+                    
+                    // Sharp central spike toward cursor (pyramid-like, slightly longer)
+                    const centralSpikeStrength = Math.pow(fieldAlignment, 2.5);
+                    const centralSpikeLength = centralSpikeStrength * smoothInfluence * 1.4 * spikeScale; // Increased from 1.2
+                    totalSpikeStrength += centralSpikeLength;
+                    
+                    // Ring 1: Sharp falloff for pyramid shape (slightly longer)
+                    const ring1Angle = 0.4;
+                    if (angleFromFieldLine <= ring1Angle) {
+                        const ring1Factor = Math.cos(angleFromFieldLine / ring1Angle * Math.PI / 2);
+                        const ring1Strength = Math.pow(ring1Factor, 2.5);
+                        const ring1Length = ring1Strength * smoothInfluence * 1.0 * spikeScale; // Increased from 0.8
+                        totalSpikeStrength += ring1Length;
+                    }
+                    
+                    // Ring 2: Even sharper for clean spike geometry (slightly longer)
+                    const ring2Angle = 0.7;
+                    if (angleFromFieldLine <= ring2Angle && angleFromFieldLine > ring1Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring1Angle) / (ring2Angle - ring1Angle);
+                        const ring2Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring2Strength = Math.pow(ring2Factor, 3.0);
+                        const ring2Length = ring2Strength * smoothInfluence * 0.5 * spikeScale; // Increased from 0.4
+                        totalSpikeStrength += ring2Length;
+                    }
+                    
+                    // Ring 3: Minimal outer influence for clean spike edges (slightly longer)
+                    const ring3Angle = 1.0;
+                    if (angleFromFieldLine <= ring3Angle && angleFromFieldLine > ring2Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring2Angle) / (ring3Angle - ring2Angle);
+                        const ring3Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring3Strength = Math.pow(ring3Factor, 4.0);
+                        const ring3Length = ring3Strength * smoothInfluence * 0.3 * spikeScale; // Increased from 0.2
+                        totalSpikeStrength += ring3Length;
+                    }
+                    
+                    targetRadius += totalSpikeStrength;
+                    
+                    // Reduced surface detail for cleaner spikes
+                    const detailScale = Math.min(1.0, sizeScale * 0.5); // Much less detail
+                    const surfaceDetail = Math.sin(vertex.x * 4 + time * 0.8) * 
+                                         Math.cos(vertex.y * 4 + time * 0.6) * 
+                                         Math.sin(vertex.z * 4 + time * 0.4) * 0.008 * detailScale; // Reduced detail
+                    if (totalSpikeStrength > 0.15) { // Higher threshold for detail
+                        targetRadius += surfaceDetail * totalSpikeStrength * 0.3; // Much less influence
+                    }
+                }
+                
+                // Non-magnetic side (smoother transition)
+                if (fieldAlignment <= 0) {
+                    targetRadius = ferrofluid.radius - Math.abs(fieldAlignment) * 0.015;
+                }
+                
+                // Smoother physics with enhanced stability
+                const currentVertex = new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2]);
+                const currentRadius = currentVertex.length();
+                
+                const radiusDiff = targetRadius - currentRadius;
+                const springForce = 0.06; // Reduced for smoothness
+                const damping = 0.96; // Increased damping
+                
+                ferrofluid.velocities[i] += radiusDiff * springForce;
+                ferrofluid.velocities[i] *= damping;
+                
+                // Smoother velocity limiting
+                const maxVelocity = 0.15; // Reduced for smoothness
+                ferrofluid.velocities[i] = Math.max(-maxVelocity, Math.min(maxVelocity, ferrofluid.velocities[i]));
+                
+                const newRadius = Math.max(0.3, currentRadius + ferrofluid.velocities[i]);
+                
+                if (isFinite(newRadius) && newRadius > 0) {
+                    positions[i3] = vertexNormal.x * newRadius;
+                    positions[i3 + 1] = vertexNormal.y * newRadius;
+                    positions[i3 + 2] = vertexNormal.z * newRadius;
+                }
+            }
+            
+            ferrofluid.geometry.attributes.position.needsUpdate = true;
+            
+            // Less frequent normal updates for performance
+            if (Math.random() < 0.1) {
+                ferrofluid.geometry.computeVertexNormals();
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update ferrofluid interactions
+            updateFerrofluidInteractions();
+            
+            // Update all ferrofluids
+            ferrofluids.forEach(ferrofluid => {
+                updateFerrofluid(ferrofluid);
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        window.addEventListener('resize', onWindowResize);
+        
+        // Initialize and start
+        createMainFerrofluid();
+        createSmallFerrofluids();
+        animate();
+    </script>
+</body>
+</html>

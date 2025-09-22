@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Cracking AI Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        
+        .input-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #4a5568;
+        }
+        
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .progress-section {
+            background: #edf2f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .generation-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            min-width: 120px;
+            margin: 5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+        }
+        
+        .progress-bar {
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .attempt-display {
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            word-break: break-all;
+            position: relative;
+        }
+        
+        .correct-char {
+            background: #48bb78;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .incorrect-char {
+            background: #f56565;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .success {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .population-display {
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .individual {
+            font-family: 'Courier New', monospace;
+            padding: 5px;
+            margin: 2px 0;
+            background: #f7fafc;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .warning {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f56565;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Password Cracking AI Demo</h1>
+        <p class="subtitle">Educational demonstration of genetic algorithms in password security</p>
+        
+        <div class="warning">
+            ⚠️ <strong>Educational Purpose Only:</strong> This tool demonstrates how AI can crack passwords to help you understand password security. Always use strong, unique passwords in real applications!
+        </div>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="targetPassword">Enter your password to test:</label>
+                <input type="text" id="targetPassword" placeholder="Try: hello123, 🔥🎉💻, or abc!@#" value="hello">
+            </div>
+            
+            <div class="input-group">
+                <label for="populationSize">Population Size (10-100):</label>
+                <input type="number" id="populationSize" min="10" max="100" value="50">
+            </div>
+            
+            <button onclick="startCracking()" id="startBtn">🚀 Start Cracking</button>
+            <button onclick="stopCracking()" id="stopBtn" disabled>⏹️ Stop</button>
+            <button onclick="resetDemo()" id="resetBtn">🔄 Reset</button>
+        </div>
+        
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="generation-info">
+                <div class="stat">
+                    <div class="stat-value" id="generation">0</div>
+                    <div class="stat-label">Generation</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="bestScore">0</div>
+                    <div class="stat-label">Best Score</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="attempts">0</div>
+                    <div class="stat-label">Attempts</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="speed">0</div>
+                    <div class="stat-label">Gen/sec</div>
+                </div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            
+            <div>
+                <strong>Best Current Attempt:</strong>
+                <div class="attempt-display" id="currentAttempt">Starting...</div>
+            </div>
+            
+            <details>
+                <summary><strong>Population (Top 10)</strong></summary>
+                <div class="population-display" id="populationDisplay"></div>
+            </details>
+        </div>
+        
+        <div id="successMessage" style="display: none;"></div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let targetPassword = '';
+        let population = [];
+        let generation = 0;
+        let attempts = 0;
+        let startTime = 0;
+        let intervalId = null;
+        
+        // Character set for password generation
+        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?🔥🎉💻🚀⭐🌟💯🎯🔒🔓';
+        
+        class Individual {
+            constructor(length) {
+                this.genes = '';
+                this.fitness = 0;
+                
+                // Generate random password
+                for (let i = 0; i < length; i++) {
+                    this.genes += charset[Math.floor(Math.random() * charset.length)];
+                }
+            }
+            
+            calculateFitness(target) {
+                let score = 0;
+                const minLength = Math.min(this.genes.length, target.length);
+                
+                // Points for correct characters in correct positions
+                for (let i = 0; i < minLength; i++) {
+                    if (this.genes[i] === target[i]) {
+                        score += 10; // High reward for exact matches
+                    } else {
+                        // Small penalty for wrong character
+                        score += Math.max(0, 5 - Math.abs(this.genes.charCodeAt(i) - target.charCodeAt(i)) / 1000);
+                    }
+                }
+                
+                // Penalty for length difference
+                score -= Math.abs(this.genes.length - target.length) * 2;
+                
+                this.fitness = Math.max(0, score);
+                return this.fitness;
+            }
+            
+            mutate(mutationRate = 0.1) {
+                let mutated = '';
+                for (let i = 0; i < this.genes.length; i++) {
+                    if (Math.random() < mutationRate) {
+                        // Mutation: random new character
+                        mutated += charset[Math.floor(Math.random() * charset.length)];
+                    } else {
+                        mutated += this.genes[i];
+                    }
+                }
+                
+                const child = new Individual(0);
+                child.genes = mutated;
+                return child;
+            }
+        }
+        
+        function createInitialPopulation(size, passwordLength) {
+            const pop = [];
+            for (let i = 0; i < size; i++) {
+                pop.push(new Individual(passwordLength));
+            }
+            return pop;
+        }
+        
+        function crossover(parent1, parent2) {
+            const crossoverPoint = Math.floor(Math.random() * parent1.genes.length);
+            const child = new Individual(0);
+            child.genes = parent1.genes.substring(0, crossoverPoint) + 
+                         parent2.genes.substring(crossoverPoint);
+            return child;
+        }
+        
+        function evolvePopulation(pop, target) {
+            // Calculate fitness for all individuals
+            pop.forEach(individual => individual.calculateFitness(target));
+            
+            // Sort by fitness (descending)
+            pop.sort((a, b) => b.fitness - a.fitness);
+            
+            // Keep top 30% as elite
+            const eliteSize = Math.floor(pop.length * 0.3);
+            const newPop = pop.slice(0, eliteSize);
+            
+            // Fill rest with offspring
+            while (newPop.length < pop.length) {
+                // Tournament selection
+                const parent1 = tournamentSelection(pop, 3);
+                const parent2 = tournamentSelection(pop, 3);
+                
+                let child;
+                if (Math.random() < 0.8) {
+                    child = crossover(parent1, parent2);
+                } else {
+                    child = parent1.mutate(0.2);
+                }
+                
+                newPop.push(child);
+            }
+            
+            return newPop;
+        }
+        
+        function tournamentSelection(pop, tournamentSize) {
+            const tournament = [];
+            for (let i = 0; i < tournamentSize; i++) {
+                tournament.push(pop[Math.floor(Math.random() * pop.length)]);
+            }
+            return tournament.reduce((best, current) => 
+                current.fitness > best.fitness ? current : best
+            );
+        }
+        
+        function displayAttempt(attempt, target) {
+            let display = '';
+            const minLength = Math.min(attempt.length, target.length);
+            
+            for (let i = 0; i < Math.max(attempt.length, target.length); i++) {
+                const attemptChar = attempt[i] || '';
+                const targetChar = target[i] || '';
+                
+                if (attemptChar === targetChar && attemptChar !== '') {
+                    display += `<span class="correct-char">${attemptChar}</span>`;
+                } else {
+                    display += `<span class="incorrect-char">${attemptChar || '?'}</span>`;
+                }
+            }
+            
+            return display;
+        }
+        
+        function updateDisplay() {
+            if (population.length === 0) return;
+            
+            const best = population[0];
+            const progress = (best.fitness / (targetPassword.length * 10)) * 100;
+            const currentGenPerSec = generation / ((Date.now() - startTime) / 1000);
+            
+            document.getElementById('generation').textContent = generation;
+            document.getElementById('bestScore').textContent = Math.round(best.fitness);
+            document.getElementById('attempts').textContent = attempts;
+            document.getElementById('speed').textContent = Math.round(currentGenPerSec);
+            document.getElementById('progressFill').style.width = Math.min(100, progress) + '%';
+            document.getElementById('progressFill').textContent = Math.round(progress) + '%';
+            document.getElementById('currentAttempt').innerHTML = displayAttempt(best.genes, targetPassword);
+            
+            // Update population display
+            const popDisplay = document.getElementById('populationDisplay');
+            popDisplay.innerHTML = population.slice(0, 10).map((ind, i) => 
+                `<div class="individual">
+                    <span>#${i+1}: ${ind.genes}</span>
+                    <span>Score: ${Math.round(ind.fitness)}</span>
+                </div>`
+            ).join('');
+        }
+        
+        function gameLoop() {
+            if (!isRunning) return;
+            
+            population = evolvePopulation(population, targetPassword);
+            generation++;
+            attempts += population.length;
+            
+            updateDisplay();
+            
+            // Check if solved
+            if (population[0].genes === targetPassword) {
+                stopCracking();
+                showSuccess();
+                return;
+            }
+            
+            // Continue evolution
+            setTimeout(gameLoop, 10);
+        }
+        
+        function startCracking() {
+            targetPassword = document.getElementById('targetPassword').value;
+            const popSize = parseInt(document.getElementById('populationSize').value);
+            
+            if (!targetPassword) {
+                alert('Please enter a password to crack!');
+                return;
+            }
+            
+            if (popSize < 10 || popSize > 100) {
+                alert('Population size must be between 10 and 100!');
+                return;
+            }
+            
+            isRunning = true;
+            generation = 0;
+            attempts = 0;
+            startTime = Date.now();
+            
+            population = createInitialPopulation(popSize, targetPassword.length);
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            gameLoop();
+        }
+        
+        function stopCracking() {
+            isRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+        
+        function resetDemo() {
+            stopCracking();
+            generation = 0;
+            attempts = 0;
+            population = [];
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        function showSuccess() {
+            const timeElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+            document.getElementById('successMessage').innerHTML = 
+                `<div class="success">
+                    <h2>🎉 Password Cracked Successfully!</h2>
+                    <p><strong>Password:</strong> "${targetPassword}"</p>
+                    <p><strong>Time:</strong> ${timeElapsed} seconds</p>
+                    <p><strong>Generations:</strong> ${generation}</p>
+                    <p><strong>Total Attempts:</strong> ${attempts.toLocaleString()}</p>
+                </div>`;
+            document.getElementById('successMessage').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
