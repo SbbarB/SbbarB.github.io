@@ -441,6 +441,69 @@
         </div>
     </main>
 
+    <!-- Edit Item Modal -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="if(event.target === this) closeEditModal()">
+        <div class="glass rounded-3xl p-8 max-w-md w-full">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Edit Item</h2>
+                <button onclick="closeEditModal()" class="text-white/70 hover:text-white text-2xl">×</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Category</label>
+                    <select id="editCategory" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
+                        <option value="long sleeve shirt">Long Sleeve Shirt</option>
+                        <option value="short sleeve shirt">Short Sleeve Shirt</option>
+                        <option value="tank top">Tank Top</option>
+                        <option value="sweater">Sweater</option>
+                        <option value="pants">Pants</option>
+                        <option value="shorts">Shorts</option>
+                        <option value="long skirt">Long Skirt</option>
+                        <option value="short skirt">Short Skirt</option>
+                        <option value="long dress">Long Dress</option>
+                        <option value="short dress">Short Dress</option>
+                        <option value="coat">Coat</option>
+                        <option value="shoes">Shoes</option>
+                        <option value="bag">Bag</option>
+                        <option value="glasses">Glasses</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Color</label>
+                    <input type="text" id="editColor" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2" placeholder="e.g., blue, red, black">
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Style</label>
+                    <select id="editStyle" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
+                        <option value="casual">Casual</option>
+                        <option value="formal">Formal</option>
+                        <option value="sporty">Sporty</option>
+                        <option value="trendy">Trendy</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="minimalist">Minimalist</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Description (optional)</label>
+                    <textarea id="editDescription" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2 h-24 resize-none" placeholder="Add notes about this item..."></textarea>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveEditedItem()" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-xl font-semibold transition-all">
+                        Save Changes
+                    </button>
+                    <button onclick="closeEditModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let clothingItems = JSON.parse(localStorage.getItem('clueless-closet-items') || '[]');
@@ -1334,9 +1397,14 @@
                 <div class="clothing-item glass rounded-2xl p-4 group">
                     <div class="relative mb-3">
                         <img src="${item.image}" alt="${item.category}" class="w-full h-32 object-cover rounded-lg">
-                        <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                            ❌
-                        </button>
+                        <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onclick="editItem(${item.id})" class="bg-blue-500/80 hover:bg-blue-600 text-white p-1 rounded-full">
+                                ✏️
+                            </button>
+                            <button onclick="removeItem(${item.id})" class="bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full">
+                                ❌
+                            </button>
+                        </div>
                         <div class="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs text-white">
                             ${Math.round(item.confidence * 100)}%
                         </div>
@@ -1376,9 +1444,14 @@
                 <div class="clothing-item glass rounded-2xl p-4 group">
                     <div class="relative mb-3">
                         <img src="${item.image}" alt="${item.category}" class="w-full h-32 object-cover rounded-lg">
-                        <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                            ❌
-                        </button>
+                        <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onclick="editItem(${item.id})" class="bg-blue-500/80 hover:bg-blue-600 text-white p-1 rounded-full">
+                                ✏️
+                            </button>
+                            <button onclick="removeItem(${item.id})" class="bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full">
+                                ❌
+                            </button>
+                        </div>
                         <div class="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs text-white">
                             ${Math.round(item.confidence * 100)}%
                         </div>
@@ -1394,6 +1467,50 @@
             localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
             updateItemCount();
             renderClothingGrid();
+        }
+
+        // Edit item functionality
+        let currentEditingItemId = null;
+
+        function editItem(id) {
+            const item = clothingItems.find(item => item.id === id);
+            if (!item) return;
+
+            currentEditingItemId = id;
+
+            // Populate modal with current values
+            document.getElementById('editCategory').value = item.category;
+            document.getElementById('editColor').value = item.color;
+            document.getElementById('editStyle').value = item.style;
+            document.getElementById('editDescription').value = item.description || '';
+
+            // Show modal
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            currentEditingItemId = null;
+        }
+
+        function saveEditedItem() {
+            if (!currentEditingItemId) return;
+
+            const itemIndex = clothingItems.findIndex(item => item.id === currentEditingItemId);
+            if (itemIndex === -1) return;
+
+            // Update item with new values
+            clothingItems[itemIndex].category = document.getElementById('editCategory').value;
+            clothingItems[itemIndex].color = document.getElementById('editColor').value.toLowerCase();
+            clothingItems[itemIndex].style = document.getElementById('editStyle').value;
+            clothingItems[itemIndex].description = document.getElementById('editDescription').value;
+
+            // Save to localStorage
+            localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
+
+            // Update UI
+            renderClothingGrid();
+            closeEditModal();
         }
 
         function clearAllItems() {
