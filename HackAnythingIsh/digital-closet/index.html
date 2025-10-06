@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Closet - Clueless Style</title>
+
+    <!-- External CDN Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="glass sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-pink-400 to-purple-600 rounded-full flex items-center justify-center">
+                        <span class="text-white text-xl">✨</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Digital Closet</h1>
+                        <div class="flex items-center gap-2">
+                            <p class="text-pink-200 text-sm">Clueless Style AI</p>
+                            <div id="modelStatus" class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-200 flex items-center gap-1">
+                                <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                                Loading Model...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Widget -->
+                <div id="weatherWidget" class="weather-widget px-4 py-2 rounded-full text-white font-medium">
+                    <button onclick="getWeather()" class="flex items-center space-x-2">
+                        <span id="weatherIcon">🌤️</span>
+                        <span id="weatherText">Get Weather</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex justify-center mt-4 space-x-2">
+                <button onclick="showTab('closet')" id="tab-closet" class="tab-button active px-6 py-3 rounded-lg font-medium transition-all">
+                    👗 My Closet
+                </button>
+                <button onclick="showTab('upload')" id="tab-upload" class="tab-button px-6 py-3 rounded-lg font-medium transition-all">
+                    📸 Add Items
+                </button>
+                <button onclick="showTab('outfit')" id="tab-outfit" class="tab-button px-6 py-3 rounded-lg font-medium transition-all">
+                    ✨ Pick Outfit
+                </button>
+                <button onclick="showTab('tryon')" id="tab-tryon" class="tab-button px-6 py-3 rounded-lg font-medium transition-all">
+                    🎭 Try On
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- Closet View -->
+        <div id="closet-tab" class="tab-content">
+            <div class="glass rounded-3xl p-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl font-bold text-white mb-4">My Digital Closet</h2>
+                    <p class="text-white/80 text-lg">
+                        <span id="itemCount">0</span> items organized by AI •
+                        <button onclick="clearAllItems()" class="text-red-300 hover:text-red-200 underline ml-2">Clear All</button>
+                    </p>
+                </div>
+
+                <!-- Category Filters -->
+                <div class="mb-8">
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button onclick="filterCategory('all')" class="filter-btn active bg-white/20 text-white px-4 py-2 rounded-full">All</button>
+                        <button onclick="filterCategory('shirt')" class="filter-btn bg-white/10 text-white/80 px-4 py-2 rounded-full">Tops</button>
+                        <button onclick="filterCategory('pants')" class="filter-btn bg-white/10 text-white/80 px-4 py-2 rounded-full">Bottoms</button>
+                        <button onclick="filterCategory('dress')" class="filter-btn bg-white/10 text-white/80 px-4 py-2 rounded-full">Dresses</button>
+                        <button onclick="filterCategory('shoes')" class="filter-btn bg-white/10 text-white/80 px-4 py-2 rounded-full">Shoes</button>
+                        <button onclick="filterCategory('jacket')" class="filter-btn bg-white/10 text-white/80 px-4 py-2 rounded-full">Outerwear</button>
+                    </div>
+                </div>
+
+                <!-- Clothing Grid -->
+                <div id="clothingGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    <div class="col-span-full text-center py-16">
+                        <div class="text-6xl mb-4">👗</div>
+                        <h3 class="text-2xl font-semibold text-white mb-2">Your closet is empty</h3>
+                        <p class="text-white/70">Start by adding some clothing items!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload View -->
+        <div id="upload-tab" class="tab-content hidden">
+            <div class="glass rounded-3xl p-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl font-bold text-white mb-4">Add Clothing Items</h2>
+                    <p class="text-white/80 text-lg">Upload multiple images to quickly populate your closet</p>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <div id="uploadArea" class="upload-area rounded-2xl p-8 text-center cursor-pointer h-80 flex flex-col items-center justify-center">
+                            <div class="text-6xl mb-4">📸</div>
+                            <h3 class="text-xl font-semibold text-white mb-2">Upload Images</h3>
+                            <p class="text-white/70 mb-4">Click to select multiple clothing photos</p>
+                            <div class="text-sm text-white/50">Supports: JPG, PNG, WEBP</div>
+                        </div>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+                    </div>
+
+                    <!-- Processing Results -->
+                    <div id="processingArea" class="space-y-4">
+                        <h3 class="text-xl font-semibold text-white">AI Classification</h3>
+                        <div id="processingResults" class="bg-white/10 rounded-2xl p-6 h-64 overflow-y-auto">
+                            <div class="text-center text-white/60 py-8">
+                                <div class="text-4xl mb-2">🤖</div>
+                                <p>Select images to see AI classification results</p>
+                            </div>
+                        </div>
+                        <button id="addItemsBtn" onclick="addProcessedItems()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-xl font-semibold transition-all hidden">
+                            Add Items to Closet
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outfit Picker View -->
+        <div id="outfit-tab" class="tab-content hidden">
+            <div class="glass rounded-3xl p-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl font-bold text-white mb-4">Pick Your Outfit</h2>
+                    <p class="text-white/80 text-lg">AI-powered outfit selection based on weather and style</p>
+                </div>
+
+                <!-- Preferences Panel -->
+                <div class="glass rounded-2xl p-6 mb-6">
+                    <h3 class="text-xl font-semibold text-white mb-4 text-center">🎨 Style Preferences</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Color Preferences -->
+                        <div>
+                            <label class="block text-white/80 text-sm mb-3">Preferred Colors</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="toggleColorPreference('black')" class="color-pref bg-gray-800 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Black</button>
+                                <button onclick="toggleColorPreference('white')" class="color-pref bg-gray-100 text-black px-3 py-2 rounded-full text-sm border-2 border-transparent">White</button>
+                                <button onclick="toggleColorPreference('blue')" class="color-pref bg-blue-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Blue</button>
+                                <button onclick="toggleColorPreference('red')" class="color-pref bg-red-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Red</button>
+                                <button onclick="toggleColorPreference('green')" class="color-pref bg-green-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Green</button>
+                                <button onclick="toggleColorPreference('gray')" class="color-pref bg-gray-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Gray</button>
+                                <button onclick="toggleColorPreference('pink')" class="color-pref bg-pink-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Pink</button>
+                                <button onclick="toggleColorPreference('purple')" class="color-pref bg-purple-500 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Purple</button>
+                            </div>
+                        </div>
+
+                        <!-- Style Preferences -->
+                        <div>
+                            <label class="block text-white/80 text-sm mb-3">Preferred Styles</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="toggleStylePreference('casual')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Casual</button>
+                                <button onclick="toggleStylePreference('formal')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Formal</button>
+                                <button onclick="toggleStylePreference('sporty')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Sporty</button>
+                                <button onclick="toggleStylePreference('trendy')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Trendy</button>
+                                <button onclick="toggleStylePreference('vintage')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Vintage</button>
+                                <button onclick="toggleStylePreference('minimalist')" class="style-pref bg-white/20 text-white px-3 py-2 rounded-full text-sm border-2 border-transparent">Minimalist</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Info Display -->
+                <div id="weatherInfo" class="glass rounded-xl p-4 mb-6 text-center hidden">
+                    <h4 class="text-white font-medium mb-2">🌤️ Current Weather</h4>
+                    <div id="weatherDetails" class="text-white/80 text-sm"></div>
+                </div>
+
+                <!-- Smart Controls -->
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <button onclick="generateSmartOutfit()" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105">
+                        ✨ Smart Outfit
+                    </button>
+                    <button onclick="generateRandomOutfit()" class="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105">
+                        🎲 Random Pick
+                    </button>
+                    <button onclick="clearOutfit()" class="bg-gray-600 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all">
+                        🔄 Clear
+                    </button>
+                </div>
+
+                <!-- Outfit Compatibility Score -->
+                <div id="compatibilityScore" class="bg-white/10 rounded-2xl p-6 mb-8 text-center hidden">
+                    <h3 class="text-xl font-semibold text-white mb-4">💖 Outfit Compatibility</h3>
+                    <div class="flex items-center justify-center gap-4">
+                        <div class="w-48 h-3 bg-white/20 rounded-full overflow-hidden">
+                            <div id="scoreBar" class="h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-1000"></div>
+                        </div>
+                        <span id="scoreText" class="text-white font-bold text-xl">0%</span>
+                    </div>
+                </div>
+
+                <!-- Outfit Categories -->
+                <div id="outfitCategories" class="space-y-6">
+                    <!-- Will be populated dynamically -->
+                </div>
+
+                <!-- Selected Outfit Preview -->
+                <div id="selectedOutfitPreview" class="hidden bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl p-6 mt-8 border border-white/20">
+                    <h3 class="text-2xl font-bold text-white mb-4 text-center">✨ Your Selected Outfit</h3>
+                    <div id="outfitPreviewGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Try On View -->
+        <div id="tryon-tab" class="tab-content hidden">
+            <div class="glass rounded-3xl p-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl font-bold text-white mb-4">Virtual Try-On</h2>
+                    <p class="text-white/80 text-lg">Experience your outfit with advanced AR technology</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- AR Preview -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-black/30 rounded-2xl p-6 h-96 relative overflow-hidden">
+                            <div class="flex flex-col items-center justify-center h-full text-white">
+                                <div class="text-6xl mb-4">🎭</div>
+                                <h3 class="text-2xl font-semibold mb-4">AR Try-On Camera</h3>
+                                <p class="text-white/70 mb-6 text-center">AR Try-On features available in full version</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls & Info -->
+                    <div class="space-y-6">
+                        <div class="glass rounded-xl p-4">
+                            <h3 class="text-white font-semibold mb-3">👗 Current Outfit</h3>
+                            <div id="currentOutfitDisplay" class="space-y-2">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-xl p-4">
+                            <h3 class="text-white font-semibold mb-3">ℹ️ How it Works</h3>
+                            <div class="text-white/70 text-sm space-y-2">
+                                <p>• Select clothing items from your closet</p>
+                                <p>• Start the AR camera for real-time preview</p>
+                                <p>• Adjust fit and positioning with controls</p>
+                                <p>• AI tracks your body for realistic placement</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Item Modal -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="if(event.target === this) closeEditModal()">
+        <div class="glass rounded-3xl p-8 max-w-md w-full">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Edit Item</h2>
+                <button onclick="closeEditModal()" class="text-white/70 hover:text-white text-2xl">×</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Category</label>
+                    <select id="editCategory" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
+                        <option value="long sleeve shirt">Long Sleeve Shirt</option>
+                        <option value="short sleeve shirt">Short Sleeve Shirt</option>
+                        <option value="tank">Tank</option>
+                        <option value="sweater">Sweater</option>
+                        <option value="pants">Pants</option>
+                        <option value="shorts">Shorts</option>
+                        <option value="long skirt">Long Skirt</option>
+                        <option value="short skirt">Short Skirt</option>
+                        <option value="long dress">Long Dress</option>
+                        <option value="short dress">Short Dress</option>
+                        <option value="coat">Coat</option>
+                        <option value="shoes">Shoes</option>
+                        <option value="bag">Bag</option>
+                        <option value="glasses">Glasses</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Color</label>
+                    <input type="text" id="editColor" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2" placeholder="e.g., blue, red, black">
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Style</label>
+                    <select id="editStyle" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
+                        <option value="casual">Casual</option>
+                        <option value="formal">Formal</option>
+                        <option value="athletic">Athletic</option>
+                        <option value="trendy">Trendy</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="minimalist">Minimalist</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm mb-2">Description (optional)</label>
+                    <textarea id="editDescription" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2 h-24 resize-none" placeholder="Add notes about this item..."></textarea>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveEditedItem(event)" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-xl font-semibold transition-all">
+                        Save Changes
+                    </button>
+                    <button onclick="closeEditModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules - Load in dependency order -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/weather.js"></script>
+    <script src="js/upload.js"></script>
+    <script src="js/closet.js"></script>
+    <script src="js/outfit.js"></script>
+
+    <!-- Application Initialization -->
+    <script>
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing Digital Closet app...');
+            console.log('Clothing items:', clothingItems.length);
+
+            updateItemCount();
+            renderClothingGrid();
+
+            // Set initial model status
+            updateModelStatus('loading');
+
+            // Load AI model
+            loadTeachableMachineModel();
+            setupEventListeners();
+
+            console.log('Event listeners set up');
+
+            // Add demo items if closet is empty (for testing)
+            if (clothingItems.length === 0) {
+                console.log('Adding demo items for testing...');
+                addDemoItems();
+            } else {
+                console.log(`Loaded ${clothingItems.length} existing items from storage`);
+            }
+
+            // Initialize preference buttons
+            updatePreferenceButtons();
+
+            console.log('App initialization complete!');
+        });
+    </script>
+</body>
+</html>
