@@ -455,7 +455,7 @@
                     <select id="editCategory" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
                         <option value="long sleeve shirt">Long Sleeve Shirt</option>
                         <option value="short sleeve shirt">Short Sleeve Shirt</option>
-                        <option value="tank top">Tank Top</option>
+                        <option value="tank">Tank</option>
                         <option value="sweater">Sweater</option>
                         <option value="pants">Pants</option>
                         <option value="shorts">Shorts</option>
@@ -480,7 +480,7 @@
                     <select id="editStyle" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-2">
                         <option value="casual">Casual</option>
                         <option value="formal">Formal</option>
-                        <option value="sporty">Sporty</option>
+                        <option value="athletic">Athletic</option>
                         <option value="trendy">Trendy</option>
                         <option value="vintage">Vintage</option>
                         <option value="minimalist">Minimalist</option>
@@ -493,7 +493,7 @@
                 </div>
 
                 <div class="flex gap-3 mt-6">
-                    <button onclick="saveEditedItem()" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-xl font-semibold transition-all">
+                    <button onclick="saveEditedItem(event)" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-xl font-semibold transition-all">
                         Save Changes
                     </button>
                     <button onclick="closeEditModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition-all">
@@ -510,12 +510,33 @@
         let currentWeather = null;
         let selectedOutfit = {};
         let model = null;
+        let styleModel = null;
         let processedImages = [];
         let currentCamera = null;
         let userPreferences = {
             colors: JSON.parse(localStorage.getItem('preferred-colors') || '[]'),
             styles: JSON.parse(localStorage.getItem('preferred-styles') || '[]')
         };
+
+        // Canvas pool for efficient image processing
+        const canvasPool = [];
+        const CANVAS_POOL_SIZE = 5;
+        function getCanvas() {
+            if (canvasPool.length > 0) {
+                return canvasPool.pop();
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = 224;
+            canvas.height = 224;
+            return canvas;
+        }
+        function releaseCanvas(canvas) {
+            if (canvasPool.length < CANVAS_POOL_SIZE) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvasPool.push(canvas);
+            }
+        }
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -650,13 +671,16 @@
         // Load Teachable Machine Model
         async function loadTeachableMachineModel() {
             try {
-                console.log('🔄 Loading Teachable Machine model...');
+                console.log('🔄 Loading Teachable Machine models...');
 
                 // Wait for libraries to be available
                 await waitForLibraries();
 
-                const modelURL = 'https://teachablemachine.withgoogle.com/models/ZRRTMEypc/model.json';
-                const metadataURL = 'https://teachablemachine.withgoogle.com/models/ZRRTMEypc/metadata.json';
+                const itemModelURL = 'https://teachablemachine.withgoogle.com/models/jyXDTYz6M/model.json';
+                const itemMetadataURL = 'https://teachablemachine.withgoogle.com/models/jyXDTYz6M/metadata.json';
+
+                const styleModelURL = 'https://teachablemachine.withgoogle.com/models/18jaLQpyB/model.json';
+                const styleMetadataURL = 'https://teachablemachine.withgoogle.com/models/18jaLQpyB/metadata.json';
 
                 // Double-check libraries are available
                 if (typeof tmImage === 'undefined') {
@@ -667,20 +691,26 @@
                     throw new Error('TensorFlow.js library not available after waiting');
                 }
 
-                console.log('📥 Loading model from:', modelURL);
-                model = await tmImage.load(modelURL, metadataURL);
-                console.log('✅ Teachable Machine model loaded successfully');
-                console.log('📋 Model class names:', model.getClassLabels());
+                console.log('📥 Loading item classification model from:', itemModelURL);
+                model = await tmImage.load(itemModelURL, itemMetadataURL);
+                console.log('✅ Item model loaded successfully');
+                console.log('📋 Item model class names:', model.getClassLabels());
+
+                console.log('📥 Loading style classification model from:', styleModelURL);
+                styleModel = await tmImage.load(styleModelURL, styleMetadataURL);
+                console.log('✅ Style model loaded successfully');
+                console.log('📋 Style model class names:', styleModel.getClassLabels());
 
                 // Add visual confirmation
-                showNotification('AI model loaded successfully! Ready to classify clothing.', 'success');
+                showNotification('AI models loaded successfully! Ready to classify clothing.', 'success');
 
                 // Update status indicator
                 updateModelStatus('loaded');
             } catch (error) {
-                console.error('❌ Failed to load Teachable Machine model:', error);
-                showNotification('Failed to load AI model. Classification will use fallback method.', 'warning');
+                console.error('❌ Failed to load Teachable Machine models:', error);
+                showNotification('Failed to load AI models. Classification will use fallback method.', 'warning');
                 model = null;
+                styleModel = null;
 
                 // Update status indicator
                 updateModelStatus('failed');
@@ -814,6 +844,10 @@
         async function getWeather() {
             console.log('🌍 Requesting location for weather...');
 
+            // Update UI to show loading state
+            document.getElementById('weatherIcon').textContent = '⏳';
+            document.getElementById('weatherText').textContent = 'Loading...';
+
             // Detect Safari for specific handling
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -864,18 +898,23 @@
                         const lat = position.coords.latitude;
                         const lon = position.coords.longitude;
 
-                        // Use free weather API - no API key required
-                        const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
-                        const weatherData = await weatherResponse.json();
-
-                        // Get location name using reverse geocoding
+                        // Get location name using reverse geocoding first to determine country
                         const geoResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
                         const geoData = await geoResponse.json();
+
+                        // Check if location is in the United States
+                        const isUS = geoData.countryCode === 'US';
+                        const temperatureUnit = isUS ? 'fahrenheit' : 'celsius';
+
+                        // Use free weather API with appropriate temperature unit
+                        const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=${temperatureUnit}&timezone=auto`);
+                        const weatherData = await weatherResponse.json();
 
                         const weatherCondition = getWeatherCondition(weatherData.current_weather.weathercode);
 
                         const realWeather = {
                             temperature: Math.round(weatherData.current_weather.temperature),
+                            temperatureUnit: isUS ? '°F' : '°C',
                             condition: weatherCondition,
                             location: geoData.city ? `${geoData.city}, ${geoData.countryName}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
                             windSpeed: weatherData.current_weather.windspeed
@@ -888,7 +927,8 @@
                         console.error('❌ Weather API error:', apiError);
                         // Fallback to mock data if API fails
                         const mockWeather = {
-                            temperature: Math.round(15 + Math.random() * 20),
+                            temperature: Math.round(60 + Math.random() * 30),
+                            temperatureUnit: '°F',
                             condition: ['sunny', 'cloudy', 'rainy', 'partly-cloudy'][Math.floor(Math.random() * 4)],
                             location: `Location (${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)})`
                         };
@@ -969,7 +1009,8 @@
 
         function useDefaultWeather() {
             currentWeather = {
-                temperature: 22,
+                temperature: 72,
+                temperatureUnit: '°F',
                 condition: 'partly-cloudy',
                 location: 'Default Location'
             };
@@ -982,11 +1023,14 @@
                 'sunny': '☀️',
                 'cloudy': '☁️',
                 'rainy': '🌧️',
-                'partly-cloudy': '⛅'
+                'partly-cloudy': '⛅',
+                'snowy': '❄️',
+                'stormy': '⛈️'
             };
 
-            document.getElementById('weatherIcon').textContent = iconMap[currentWeather.condition];
-            document.getElementById('weatherText').textContent = `${currentWeather.temperature}°C`;
+            document.getElementById('weatherIcon').textContent = iconMap[currentWeather.condition] || '🌤️';
+            const tempUnit = currentWeather.temperatureUnit || '°C';
+            document.getElementById('weatherText').textContent = `${currentWeather.temperature}${tempUnit}`;
 
             // Update weather info panel
             const weatherInfo = document.getElementById('weatherInfo');
@@ -994,7 +1038,8 @@
 
             weatherInfo.classList.remove('hidden');
             weatherDetails.innerHTML = `
-                <p><strong>${currentWeather.temperature}°C</strong> - ${currentWeather.condition.replace('-', ' ')}</p>
+                <p><strong>${currentWeather.temperature}${tempUnit}</strong> - ${currentWeather.condition.replace('-', ' ')}</p>
+                ${currentWeather.location ? `<p class="text-xs mt-1">📍 ${currentWeather.location}</p>` : ''}
                 <p class="text-xs mt-1">Smart outfit will consider weather conditions</p>
             `;
         }
@@ -1048,76 +1093,128 @@
             });
         }
 
-        // File Upload and Processing
+        // File Upload and Processing - Optimized for batch processing
         async function handleFileUpload(event) {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
 
+            console.log(`📦 Processing ${files.length} images...`);
+
             processedImages = [];
             const resultsContainer = document.getElementById('processingResults');
-            resultsContainer.innerHTML = '<div class="text-center text-white"><div class="animate-spin text-2xl mb-2">⚡</div><p>Processing images...</p></div>';
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                try {
-                    const imageData = await fileToDataURL(file);
-                    const classification = await classifyImage(imageData);
+            // Show progress indicator
+            resultsContainer.innerHTML = `
+                <div class="text-center text-white">
+                    <div class="animate-spin text-2xl mb-2">⚡</div>
+                    <p class="font-semibold">Processing ${files.length} images...</p>
+                    <div class="mt-4 bg-white/20 rounded-full h-2">
+                        <div id="uploadProgress" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm mt-2"><span id="progressText">0 / ${files.length}</span> completed</p>
+                </div>
+            `;
 
-                    const processedItem = {
-                        id: Date.now() + i,
-                        image: imageData,
-                        filename: file.name,
-                        ...classification
-                    };
+            // Process images in batches of 3 for better performance
+            const BATCH_SIZE = 3;
+            let completed = 0;
+            let failed = 0;
 
-                    processedImages.push(processedItem);
-                    updateProcessingResults();
-                } catch (error) {
-                    console.error('Failed to process image:', file.name, error);
-                }
+            for (let i = 0; i < files.length; i += BATCH_SIZE) {
+                const batch = files.slice(i, i + BATCH_SIZE);
+
+                // Process batch in parallel
+                const batchPromises = batch.map(async (file, batchIndex) => {
+                    try {
+                        const imageData = await fileToDataURL(file);
+                        const classification = await classifyImage(imageData);
+
+                        const processedItem = {
+                            id: Date.now() + i + batchIndex,
+                            image: imageData,
+                            filename: file.name,
+                            ...classification
+                        };
+
+                        processedImages.push(processedItem);
+                        completed++;
+
+                        // Update progress
+                        const progress = (completed / files.length) * 100;
+                        const progressBar = document.getElementById('uploadProgress');
+                        const progressText = document.getElementById('progressText');
+                        if (progressBar) progressBar.style.width = `${progress}%`;
+                        if (progressText) progressText.textContent = `${completed} / ${files.length}`;
+
+                        console.log(`✅ Processed ${file.name} (${completed}/${files.length})`);
+                    } catch (error) {
+                        console.error('❌ Failed to process image:', file.name, error);
+                        failed++;
+                        completed++;
+
+                        // Update progress even for failures
+                        const progress = (completed / files.length) * 100;
+                        const progressBar = document.getElementById('uploadProgress');
+                        const progressText = document.getElementById('progressText');
+                        if (progressBar) progressBar.style.width = `${progress}%`;
+                        if (progressText) progressText.textContent = `${completed} / ${files.length}`;
+                    }
+                });
+
+                // Wait for batch to complete before starting next batch
+                await Promise.all(batchPromises);
             }
 
+            // Show final results
+            console.log(`✅ Processing complete: ${processedImages.length} successful, ${failed} failed`);
+            updateProcessingResults();
             document.getElementById('addItemsBtn').classList.remove('hidden');
+
+            if (failed > 0) {
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-yellow-400 mb-4 p-3 bg-yellow-500/20 rounded-lg">
+                        ⚠️ ${failed} image(s) failed to process
+                    </div>
+                ` + resultsContainer.innerHTML;
+            }
         }
 
         async function classifyImage(imageData) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = async () => {
+                    let canvas = null;
                     try {
                         if (model) {
-                            console.log('🔍 Starting image classification...');
-
-                            // Resize image to model's expected input size (224x224 for most Teachable Machine models)
-                            const canvas = document.createElement('canvas');
+                            // Get canvas from pool for efficient reuse
+                            canvas = getCanvas();
                             const ctx = canvas.getContext('2d');
-                            canvas.width = 224;
-                            canvas.height = 224;
 
                             // Draw and resize the image to 224x224
                             ctx.drawImage(img, 0, 0, 224, 224);
 
-                            console.log('🖼️ Image resized to 224x224 for model input');
+                            // Get predictions from the item classification model
+                            const itemPredictions = await model.predict(canvas);
 
-                            // Get predictions from the model
-                            const predictions = await model.predict(canvas);
-                            console.log('🤖 Raw model predictions:', predictions.map(p => ({
-                                class: p.className,
-                                probability: (p.probability * 100).toFixed(1) + '%'
-                            })));
-
-                            // Sort predictions by probability and get top result
-                            const sortedPredictions = predictions.sort((a, b) => b.probability - a.probability);
-                            const topPrediction = sortedPredictions[0];
-
-                            console.log('🏆 Top prediction:', {
-                                class: topPrediction.className,
-                                confidence: (topPrediction.probability * 100).toFixed(1) + '%'
-                            });
+                            // Sort predictions by probability and get top results
+                            const sortedItemPredictions = itemPredictions.sort((a, b) => b.probability - a.probability);
+                            const topItemPrediction = sortedItemPredictions[0];
 
                             // Clean up the category name (remove any extra spaces, make lowercase)
-                            const category = topPrediction.className.toLowerCase().trim();
-                            const confidence = topPrediction.probability;
+                            const category = topItemPrediction.className.toLowerCase().trim();
+                            const confidence = topItemPrediction.probability;
+
+                            // Get style from second model if available, otherwise use fallback
+                            let style;
+                            if (styleModel) {
+                                const stylePredictions = await styleModel.predict(canvas);
+                                const sortedStylePredictions = stylePredictions.sort((a, b) => b.probability - a.probability);
+                                const topStylePrediction = sortedStylePredictions[0];
+                                style = topStylePrediction.className.toLowerCase().trim();
+                            } else {
+                                // Fallback to determineStyle function if style model not loaded
+                                style = determineStyle(category);
+                            }
 
                             // Only proceed with classification if confidence is reasonable
                             if (confidence < 0.1) {
@@ -1135,9 +1232,6 @@
                             // Determine color based on image analysis
                             const color = await analyzeColor(img, category);
 
-                            // Determine style based on category and context
-                            const style = determineStyle(category);
-
                             const finalResult = {
                                 category: category,
                                 confidence: confidence,
@@ -1146,13 +1240,12 @@
                                 timestamp: Date.now()
                             };
 
-                            console.log('✅ Final classification result:', finalResult);
+                            // Release canvas back to pool
+                            if (canvas) releaseCanvas(canvas);
 
                             resolve(finalResult);
                         } else {
-                            console.warn('⚠️ Model not loaded, using fallback classification');
-                            console.warn('🔍 Checking model variable:', model === null ? 'null' : typeof model);
-                            console.warn('🔍 Checking tmImage availability:', typeof tmImage);
+                            console.warn('⚠️ Models not loaded, using fallback classification');
 
                             // Enhanced fallback classification
                             resolve({
@@ -1165,6 +1258,10 @@
                         }
                     } catch (error) {
                         console.error('❌ Classification error:', error);
+
+                        // Release canvas even on error
+                        if (canvas) releaseCanvas(canvas);
+
                         resolve({
                             category: 'clothing',
                             confidence: 0.5,
@@ -1261,34 +1358,35 @@
             return closestColor;
         }
 
-        // Determine style based on category and context - Updated for your specific model
+        // Determine style based on category and context - Fallback function (style is now determined by second model)
         function determineStyle(category) {
             const categoryLower = category.toLowerCase();
 
-            // Direct mapping for your model's 14 categories
+            // Direct mapping for fallback when style model is not available
+            // Categories match the new style model: Athletic, Casual, Formal, Trendy, Minimalist, Vintage
             const modelStyleMap = {
                 // Formal items
                 'long dress': 'formal',
                 'short dress': 'formal',
                 'coat': 'formal',
 
-                // Business Casual
-                'long sleeve shirt': 'business-casual',
-                'sweater': 'business-casual',
-
                 // Casual items
+                'long sleeve shirt': 'casual',
+                'sweater': 'casual',
                 'short sleeve shirt': 'casual',
-                'tank top': 'casual',
+                'tank': 'casual',
                 'shorts': 'casual',
                 'pants': 'casual',
                 'long skirt': 'casual',
                 'short skirt': 'casual',
 
-                // Sporty/Athletic
-                'shoes': 'sporty', // Assuming athletic shoes
+                // Athletic
+                'shoes': 'athletic',
 
-                // Accessories
+                // Trendy/Accessories
                 'bag': 'trendy',
+
+                // Minimalist
                 'glasses': 'minimalist'
             };
 
@@ -1300,11 +1398,11 @@
             // Fallback style detection based on keywords
             const styleKeywords = {
                 'formal': ['dress', 'coat', 'suit'],
-                'business-casual': ['long sleeve', 'sweater', 'blazer'],
-                'casual': ['shirt', 'tank', 'shorts', 'pants', 'skirt'],
-                'sporty': ['athletic', 'sport', 'shoes', 'sneaker'],
+                'casual': ['shirt', 'sleeve', 'sweater', 'tank', 'shorts', 'pants', 'skirt'],
+                'athletic': ['athletic', 'sport', 'shoes', 'sneaker'],
                 'trendy': ['bag', 'accessory', 'designer'],
-                'minimalist': ['glasses', 'plain', 'simple', 'basic']
+                'minimalist': ['glasses', 'plain', 'simple', 'basic'],
+                'vintage': ['vintage', 'retro', 'classic']
             };
 
             // Check keywords
@@ -1318,7 +1416,7 @@
             if (categoryLower.includes('dress')) {
                 return 'formal';
             } else if (categoryLower.includes('sleeve') || categoryLower.includes('sweater')) {
-                return 'business-casual';
+                return 'casual';
             } else if (categoryLower.includes('tank') || categoryLower.includes('shorts')) {
                 return 'casual';
             } else {
@@ -1326,13 +1424,45 @@
             }
         }
 
-        function fileToDataURL(file) {
+        // Compress image to reduce localStorage size
+        function compressImage(file, maxWidth = 800, quality = 0.7) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Calculate new dimensions
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+
+                        // Create canvas and compress
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Convert to compressed JPEG
+                        const compressedDataURL = canvas.toDataURL('image/jpeg', quality);
+                        console.log(`📉 Compressed image: ${(e.target.result.length / 1024).toFixed(1)}KB → ${(compressedDataURL.length / 1024).toFixed(1)}KB`);
+                        resolve(compressedDataURL);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
+        }
+
+        function fileToDataURL(file) {
+            // Use compression for storage efficiency
+            return compressImage(file, 800, 0.7);
         }
 
         function updateProcessingResults() {
@@ -1349,29 +1479,85 @@
             `).join('');
         }
 
-        function addProcessedItems() {
-            // If user is adding their first real items, clear demo items
-            const hasDemoItems = clothingItems.some(item =>
-                item.image && item.image.startsWith('data:image/svg+xml;base64')
-            );
+        async function addProcessedItems() {
+            const addBtn = document.getElementById('addItemsBtn');
+            const resultsContainer = document.getElementById('processingResults');
 
-            if (hasDemoItems) {
-                console.log('🗑️ Removing demo items as user is adding real clothing');
-                clothingItems = clothingItems.filter(item =>
-                    !(item.image && item.image.startsWith('data:image/svg+xml;base64'))
+            // Show immediate feedback
+            addBtn.disabled = true;
+            addBtn.innerHTML = '⏳ Adding to closet...';
+
+            // Give UI time to update before blocking operation
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try {
+                console.log(`📦 Adding ${processedImages.length} items to closet...`);
+
+                // If user is adding their first real items, clear demo items
+                const hasDemoItems = clothingItems.some(item =>
+                    item.image && item.image.startsWith('data:image/svg+xml;base64')
                 );
+
+                if (hasDemoItems) {
+                    console.log('🗑️ Removing demo items as user is adding real clothing');
+                    clothingItems = clothingItems.filter(item =>
+                        !(item.image && item.image.startsWith('data:image/svg+xml;base64'))
+                    );
+                }
+
+                // Add items
+                clothingItems = [...clothingItems, ...processedImages];
+
+                // Save to localStorage
+                try {
+                    const dataSize = JSON.stringify(clothingItems).length;
+                    console.log(`💾 Saving ${clothingItems.length} items (${(dataSize / 1024).toFixed(1)}KB) to localStorage`);
+                    localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
+                    console.log('✅ Items saved to localStorage');
+                } catch (error) {
+                    console.error('❌ localStorage error:', error);
+
+                    // Provide helpful error message
+                    const itemCount = clothingItems.length;
+                    if (error.name === 'QuotaExceededError' || error.code === 22) {
+                        alert(`⚠️ Storage limit reached!\n\nYou have ${itemCount} items which exceeds browser storage capacity.\n\nSuggestions:\n• Remove older items you don't need\n• The items ARE added to your closet, but won't save after refresh\n• Consider downloading/backing up your closet`);
+                    } else {
+                        alert('Warning: Could not save to browser storage. Your items may not persist after refresh.');
+                    }
+                }
+
+                // Clear processed images
+                processedImages = [];
+
+                // Update UI
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-white py-8">
+                        <div class="text-4xl mb-2">✅</div>
+                        <p class="font-semibold">Items added to closet!</p>
+                        <p class="text-sm text-white/70 mt-2">Check the "My Closet" tab to see your items</p>
+                    </div>
+                `;
+
+                addBtn.classList.add('hidden');
+                addBtn.disabled = false;
+                addBtn.innerHTML = 'Add Items to Closet';
+                document.getElementById('fileInput').value = '';
+
+                // Update count immediately
+                updateItemCount();
+
+                // Render grid after a small delay to avoid blocking
+                await new Promise(resolve => setTimeout(resolve, 100));
+                renderClothingGrid();
+
+                console.log('✅ Successfully added items to closet');
+
+            } catch (error) {
+                console.error('❌ Error adding items:', error);
+                alert('Error adding items to closet. Please try again.');
+                addBtn.disabled = false;
+                addBtn.innerHTML = 'Add Items to Closet';
             }
-
-            clothingItems = [...clothingItems, ...processedImages];
-            localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
-
-            processedImages = [];
-            document.getElementById('processingResults').innerHTML = '<div class="text-center text-white/60 py-8"><div class="text-4xl mb-2">✅</div><p>Items added to closet!</p></div>';
-            document.getElementById('addItemsBtn').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
-
-            updateItemCount();
-            renderClothingGrid();
         }
 
         // Closet Management
@@ -1411,6 +1597,7 @@
                     </div>
                     <h4 class="text-white font-medium capitalize text-sm">${item.category}</h4>
                     <p class="text-white/70 text-xs capitalize">${item.color} • ${item.style}</p>
+                    ${item.description ? `<p class="text-white/60 text-xs mt-1 italic">${item.description}</p>` : ''}
                 </div>
             `).join('');
         }
@@ -1458,14 +1645,21 @@
                     </div>
                     <h4 class="text-white font-medium capitalize text-sm">${item.category}</h4>
                     <p class="text-white/70 text-xs capitalize">${item.color} • ${item.style}</p>
+                    ${item.description ? `<p class="text-white/60 text-xs mt-1 italic">${item.description}</p>` : ''}
                 </div>
             `).join('');
         }
 
-        function removeItem(id) {
+        async function removeItem(id) {
+            // Small delay for UI responsiveness
+            await new Promise(resolve => setTimeout(resolve, 10));
+
             clothingItems = clothingItems.filter(item => item.id !== id);
             localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
             updateItemCount();
+
+            // Small delay before heavy render
+            await new Promise(resolve => setTimeout(resolve, 50));
             renderClothingGrid();
         }
 
@@ -1493,24 +1687,52 @@
             currentEditingItemId = null;
         }
 
-        function saveEditedItem() {
+        async function saveEditedItem(event) {
             if (!currentEditingItemId) return;
 
             const itemIndex = clothingItems.findIndex(item => item.id === currentEditingItemId);
             if (itemIndex === -1) return;
 
-            // Update item with new values
-            clothingItems[itemIndex].category = document.getElementById('editCategory').value;
-            clothingItems[itemIndex].color = document.getElementById('editColor').value.toLowerCase();
-            clothingItems[itemIndex].style = document.getElementById('editStyle').value;
-            clothingItems[itemIndex].description = document.getElementById('editDescription').value;
+            // Get button and show immediate feedback
+            const saveBtn = event ? event.target : null;
+            let originalText = '';
+            if (saveBtn) {
+                originalText = saveBtn.innerHTML;
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '⏳ Saving...';
+            }
 
-            // Save to localStorage
-            localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
+            // Give UI time to update
+            await new Promise(resolve => setTimeout(resolve, 50));
 
-            // Update UI
-            renderClothingGrid();
-            closeEditModal();
+            try {
+                // Update item with new values
+                clothingItems[itemIndex].category = document.getElementById('editCategory').value;
+                clothingItems[itemIndex].color = document.getElementById('editColor').value.toLowerCase();
+                clothingItems[itemIndex].style = document.getElementById('editStyle').value;
+                clothingItems[itemIndex].description = document.getElementById('editDescription').value;
+
+                // Save to localStorage
+                localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
+
+                // Close modal first for immediate feedback
+                closeEditModal();
+
+                // Small delay before heavy render
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Update UI
+                renderClothingGrid();
+
+                console.log('✅ Item updated successfully');
+            } catch (error) {
+                console.error('❌ Error saving item:', error);
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                }
+                alert('Error saving changes. Please try again.');
+            }
         }
 
         function clearAllItems() {
@@ -1525,7 +1747,7 @@
         // Outfit Generation
         function renderOutfitCategories() {
             const categories = {
-                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank top', 'sweater'],
+                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank', 'sweater'],
                 'bottoms': ['pants', 'shorts', 'long skirt', 'short skirt'],
                 'dresses': ['long dress', 'short dress'],
                 'outerwear': ['coat'],
@@ -1580,7 +1802,7 @@
 
             // Updated category mapping to match YOUR specific Teachable Machine model
             const categories = {
-                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank top', 'sweater'],
+                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank', 'sweater'],
                 'bottoms': ['pants', 'shorts', 'long skirt', 'short skirt'],
                 'dresses': ['long dress', 'short dress'],
                 'outerwear': ['coat'],
@@ -1732,7 +1954,7 @@
 
             // Updated category mapping to match YOUR specific Teachable Machine model
             const categories = {
-                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank top', 'sweater'],
+                'tops': ['long sleeve shirt', 'short sleeve shirt', 'tank', 'sweater'],
                 'bottoms': ['pants', 'shorts', 'long skirt', 'short skirt'],
                 'dresses': ['long dress', 'short dress'],
                 'outerwear': ['coat'],
