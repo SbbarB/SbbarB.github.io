@@ -1,5 +1,8 @@
-// File Upload and Processing - Optimized for batch processing
+// ========== FILE UPLOAD AND PROCESSING ==========
+// Batch image upload with AI classification
 
+// ===== HANDLE FILE UPLOAD =====
+// Process multiple images with progress tracking
 async function handleFileUpload(event) {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
@@ -9,7 +12,7 @@ async function handleFileUpload(event) {
     processedImages = [];
     const resultsContainer = document.getElementById('processingResults');
 
-    // Show progress indicator
+    // Display progress bar
     resultsContainer.innerHTML = `
         <div class="text-center text-white">
             <div class="animate-spin text-2xl mb-2">⚡</div>
@@ -21,7 +24,7 @@ async function handleFileUpload(event) {
         </div>
     `;
 
-    // Process images in batches of 3 for better performance
+    // Batch processing prevents UI blocking
     const BATCH_SIZE = 3;
     let completed = 0;
     let failed = 0;
@@ -29,7 +32,7 @@ async function handleFileUpload(event) {
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
         const batch = files.slice(i, i + BATCH_SIZE);
 
-        // Process batch in parallel
+        // Process each batch concurrently
         const batchPromises = batch.map(async (file, batchIndex) => {
             try {
                 const imageData = await fileToDataURL(file);
@@ -45,7 +48,7 @@ async function handleFileUpload(event) {
                 processedImages.push(processedItem);
                 completed++;
 
-                // Update progress
+                // Update progress bar and counter
                 const progress = (completed / files.length) * 100;
                 const progressBar = document.getElementById('uploadProgress');
                 const progressText = document.getElementById('progressText');
@@ -58,7 +61,7 @@ async function handleFileUpload(event) {
                 failed++;
                 completed++;
 
-                // Update progress even for failures
+                // Track failures in progress
                 const progress = (completed / files.length) * 100;
                 const progressBar = document.getElementById('uploadProgress');
                 const progressText = document.getElementById('progressText');
@@ -67,11 +70,11 @@ async function handleFileUpload(event) {
             }
         });
 
-        // Wait for batch to complete before starting next batch
+        // Wait for current batch before next
         await Promise.all(batchPromises);
     }
 
-    // Show final results
+    // Display classification results
     console.log(`Processing complete: ${processedImages.length} successful, ${failed} failed`);
     updateProcessingResults();
     document.getElementById('addItemsBtn').classList.remove('hidden');
@@ -85,6 +88,8 @@ async function handleFileUpload(event) {
     }
 }
 
+// ===== DISPLAY RESULTS =====
+// Show processed items with AI classifications
 function updateProcessingResults() {
     const container = document.getElementById('processingResults');
     container.innerHTML = processedImages.map(item => `
@@ -99,11 +104,13 @@ function updateProcessingResults() {
     `).join('');
 }
 
+// ===== ADD TO CLOSET =====
+// Save processed items to localStorage
 async function addProcessedItems() {
     const addBtn = document.getElementById('addItemsBtn');
     const resultsContainer = document.getElementById('processingResults');
 
-    // Show immediate feedback
+    // Disable button and show loading
     addBtn.disabled = true;
     addBtn.innerHTML = '⏳ Adding to closet...';
 
@@ -113,7 +120,7 @@ async function addProcessedItems() {
     try {
         console.log(`Adding ${processedImages.length} items to closet...`);
 
-        // If user is adding their first real items, clear demo items
+        // Remove demo items when user adds real clothing
         const hasDemoItems = clothingItems.some(item =>
             item.image && item.image.startsWith('data:image/svg+xml;base64')
         );
@@ -125,10 +132,10 @@ async function addProcessedItems() {
             );
         }
 
-        // Add items
+        // Merge with existing items
         clothingItems = [...clothingItems, ...processedImages];
 
-        // Save to localStorage
+        // Persist to browser storage
         try {
             const dataSize = JSON.stringify(clothingItems).length;
             console.log(`Saving ${clothingItems.length} items (${(dataSize / 1024).toFixed(1)}KB) to localStorage`);
@@ -137,7 +144,7 @@ async function addProcessedItems() {
         } catch (error) {
             console.error('localStorage error:', error);
 
-            // Provide helpful error message
+            // Handle storage quota exceeded
             const itemCount = clothingItems.length;
             if (error.name === 'QuotaExceededError' || error.code === 22) {
                 alert(`Storage limit reached!\n\nYou have ${itemCount} items which exceeds browser storage capacity.\n\nSuggestions:\n• Remove older items you don't need\n• The items ARE added to your closet, but won't save after refresh\n• Consider downloading/backing up your closet`);
@@ -146,10 +153,10 @@ async function addProcessedItems() {
             }
         }
 
-        // Clear processed images
+        // Reset upload state
         processedImages = [];
 
-        // Update UI
+        // Show success message
         resultsContainer.innerHTML = `
             <div class="text-center text-white py-8">
                 <div class="text-4xl mb-2">✅</div>
@@ -163,10 +170,10 @@ async function addProcessedItems() {
         addBtn.innerHTML = 'Add Items to Closet';
         document.getElementById('fileInput').value = '';
 
-        // Update count immediately
+        // Update item count display
         updateItemCount();
 
-        // Render grid after a small delay to avoid blocking
+        // Defer rendering to prevent UI block
         await new Promise(resolve => setTimeout(resolve, 100));
         renderClothingGrid();
 

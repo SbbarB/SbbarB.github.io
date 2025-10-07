@@ -1,5 +1,7 @@
-// Outfit Generation Functions
+// ========== OUTFIT GENERATION ==========
 
+// ===== RENDER OUTFIT UI =====
+// Display outfit categories with selected items
 function renderOutfitCategories() {
     const container = document.getElementById('outfitCategories');
     container.innerHTML = Object.entries(CATEGORIES).map(([categoryName, keywords]) => {
@@ -46,7 +48,7 @@ function generateSmartOutfit() {
     console.log('Generating smart outfit with items:', clothingItems);
     console.log('User preferences:', userPreferences);
 
-    // Check if we have essential items (top and bottom OR dress)
+    // Validate required clothing items exist
     const hasTop = clothingItems.some(item => {
         const itemCategory = item.category.toLowerCase();
         return CATEGORIES['tops'].some(keyword =>
@@ -89,65 +91,65 @@ function generateSmartOutfit() {
         console.log(`${categoryName} items:`, categoryItems);
 
         if (categoryItems.length > 0) {
-            // Smart selection based on weather, color, style, and user preferences
+            // Score each item based on multiple factors
             let scoredItems = categoryItems.map(item => {
                 let score = (item.confidence || 0.8) * 100;
 
-                // User color preferences (HIGH PRIORITY)
+                // Prioritize user's preferred colors
                 if (userPreferences.colors.length > 0) {
                     if (userPreferences.colors.includes(item.color)) {
                         score += 50; // Major bonus for preferred colors
                     }
                 }
 
-                // User style preferences (HIGH PRIORITY)
+                // Prioritize user's preferred styles
                 if (userPreferences.styles.length > 0) {
                     if (userPreferences.styles.includes(item.style)) {
                         score += 40; // Major bonus for preferred styles
                     }
                 }
 
-                // Weather considerations (MEDIUM PRIORITY)
+                // Adjust score based on temperature
                 if (currentWeather) {
                     const temp = currentWeather.temperature;
 
                     if (temp < 15) {
-                        // Cold weather preferences
+                        // Boost warm clothing in cold weather
                         if (categoryName === 'outerwear') score += 35;
                         if (categoryName === 'bottoms' && (item.category.includes('pants') || item.category.includes('jeans'))) score += 25;
                         if (['black', 'gray', 'navy', 'brown'].includes(item.color)) score += 15;
-                        // Discourage shorts/tank tops in cold weather
+                        // Penalize summer items
                         if (item.category.includes('shorts') || item.category.includes('tank')) score -= 30;
                     } else if (temp > 25) {
-                        // Hot weather preferences
+                        // Boost light clothing in hot weather
                         if (categoryName === 'tops' && (item.category.includes('tank') || item.category.includes('t-shirt'))) score += 30;
                         if (categoryName === 'bottoms' && (item.category.includes('shorts') || item.category.includes('skirt'))) score += 25;
                         if (['white', 'yellow', 'pink', 'beige'].includes(item.color)) score += 15;
-                        // Discourage heavy items in hot weather
+                        // Penalize heavy items
                         if (item.category.includes('jacket') || item.category.includes('sweater')) score -= 25;
                     } else {
-                        // Mild weather - balance
+                        // Mild weather is flexible
                         score += 5;
                     }
 
-                    // Rain considerations
+                    // Adjust for rainy conditions
                     if (currentWeather.condition === 'rainy') {
                         if (categoryName === 'outerwear') score += 30;
                         if (categoryName === 'shoes' && item.category.includes('boots')) score += 20;
                     }
                 }
 
-                // Style consistency bonus (if we already have items selected)
+                // Bonus for matching styles across outfit
                 const existingStyles = Object.values(selectedOutfit).map(i => i.style);
                 if (existingStyles.length > 0 && existingStyles.includes(item.style)) {
                     score += 20;
                 }
 
-                // Color coordination bonus
+                // Bonus for color harmony
                 const existingColors = Object.values(selectedOutfit).map(i => i.color);
                 if (existingColors.length > 0) {
                     if (existingColors.includes(item.color)) score += 15;
-                    if (['black', 'white', 'gray'].includes(item.color)) score += 10; // Neutral colors
+                    if (['black', 'white', 'gray'].includes(item.color)) score += 10; // Neutrals match everything
                 }
 
                 return { ...item, score };
@@ -161,7 +163,7 @@ function generateSmartOutfit() {
 
     console.log('Generated outfit:', selectedOutfit);
 
-    // Validate we have essential pieces
+    // Check outfit completeness
     const hasSelectedTop = selectedOutfit['tops'];
     const hasSelectedBottom = selectedOutfit['bottoms'];
     const hasSelectedDress = selectedOutfit['dresses'];
@@ -180,6 +182,8 @@ function generateSmartOutfit() {
     }
 }
 
+// ===== RANDOM OUTFIT =====
+// Generate outfit with random selection
 function generateRandomOutfit() {
     if (clothingItems.length === 0) {
         alert('Add some clothing items first!');
@@ -218,6 +222,8 @@ function generateRandomOutfit() {
     }
 }
 
+// ===== ROTATE ITEMS =====
+// Cycle through items in a category
 function rotateCategory(categoryName, direction) {
     const keywords = CATEGORIES[categoryName];
     if (!keywords) return;
@@ -245,7 +251,7 @@ function rotateCategory(categoryName, direction) {
 
     selectedOutfit[categoryName] = categoryItems[newIndex];
 
-    // Add spinning animation
+    // Visual feedback during rotation
     const categoryElement = document.getElementById(`category-${categoryName}`);
     if (categoryElement) {
         categoryElement.classList.add('spinning');
@@ -258,6 +264,8 @@ function rotateCategory(categoryName, direction) {
     }
 }
 
+// ===== CLEAR OUTFIT =====
+// Reset selected outfit
 function clearOutfit() {
     selectedOutfit = {};
     renderOutfitCategories();
@@ -265,6 +273,8 @@ function clearOutfit() {
     document.getElementById('selectedOutfitPreview').classList.add('hidden');
 }
 
+// ===== COMPATIBILITY SCORE =====
+// Calculate outfit quality based on color, style, and weather
 function updateCompatibilityScore() {
     const outfitItems = Object.values(selectedOutfit);
     if (outfitItems.length < 2) {
@@ -274,18 +284,18 @@ function updateCompatibilityScore() {
 
     let score = 0;
 
-    // Color harmony
+    // Score color coordination
     const colors = outfitItems.map(item => item.color);
     const uniqueColors = [...new Set(colors)];
     if (uniqueColors.length <= 3) score += 30;
     if (colors.includes('white') || colors.includes('black')) score += 20;
 
-    // Style consistency
+    // Score style matching
     const styles = outfitItems.map(item => item.style);
     const uniqueStyles = [...new Set(styles)];
     if (uniqueStyles.length <= 2) score += 25;
 
-    // Weather appropriateness
+    // Score weather suitability
     if (currentWeather) {
         if (currentWeather.temperature < 15 && outfitItems.some(item =>
             item.category.includes('jacket') || item.category.includes('pants')
@@ -296,7 +306,7 @@ function updateCompatibilityScore() {
         )) score += 20;
     }
 
-    // Average confidence
+    // Factor in AI classification confidence
     const avgConfidence = outfitItems.reduce((sum, item) => sum + item.confidence, 0) / outfitItems.length;
     score += avgConfidence * 15;
 
@@ -307,6 +317,8 @@ function updateCompatibilityScore() {
     document.getElementById('compatibilityScore').classList.remove('hidden');
 }
 
+// ===== OUTFIT PREVIEW =====
+// Show selected outfit in preview panel
 function showSelectedOutfitPreview() {
     const outfitItems = Object.values(selectedOutfit);
     if (outfitItems.length === 0) {
@@ -325,7 +337,8 @@ function showSelectedOutfitPreview() {
     document.getElementById('selectedOutfitPreview').classList.remove('hidden');
 }
 
-// Display current outfit for try-on tab
+// ===== TRY-ON DISPLAY =====
+// Show outfit in virtual try-on tab
 function displayCurrentOutfit() {
     const outfitItems = Object.values(selectedOutfit);
     const container = document.getElementById('currentOutfitDisplay');

@@ -5,16 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Closet - Clueless Style</title>
 
-    <!-- External CDN Scripts -->
+    <!-- Tailwind CSS framework for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- TensorFlow.js for ML model inference -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+    <!-- Teachable Machine library for image classification -->
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
 
-    <!-- Local Styles -->
+    <!-- Custom styles and animations -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="gradient-bg min-h-screen">
-    <!-- Navigation Header -->
+    <!-- ========== NAVIGATION HEADER ========== -->
     <nav class="glass sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
@@ -34,7 +38,7 @@
                     </div>
                 </div>
 
-                <!-- Weather Widget -->
+                <!-- Weather widget with location-based API integration -->
                 <div id="weatherWidget" class="weather-widget px-4 py-2 rounded-full text-white font-medium">
                     <button onclick="getWeather()" class="flex items-center space-x-2">
                         <span id="weatherIcon">🌤️</span>
@@ -43,7 +47,7 @@
                 </div>
             </div>
 
-            <!-- Tab Navigation -->
+            <!-- Main tab navigation for different app sections -->
             <div class="flex justify-center mt-4 space-x-2">
                 <button onclick="showTab('closet')" id="tab-closet" class="tab-button active px-6 py-3 rounded-lg font-medium transition-all">
                     👗 My Closet
@@ -61,10 +65,11 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
+    <!-- ========== MAIN CONTENT ========== -->
     <main class="max-w-7xl mx-auto px-6 py-8">
 
-        <!-- Closet View -->
+        <!-- ===== CLOSET VIEW ===== -->
+        <!-- Display all clothing items with AI classification -->
         <div id="closet-tab" class="tab-content">
             <div class="glass rounded-3xl p-8">
                 <div class="text-center mb-8">
@@ -87,7 +92,7 @@
                     </div>
                 </div>
 
-                <!-- Clothing Grid -->
+                <!-- Responsive grid of clothing items, dynamically populated -->
                 <div id="clothingGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     <div class="col-span-full text-center py-16">
                         <div class="text-6xl mb-4">👗</div>
@@ -98,7 +103,8 @@
             </div>
         </div>
 
-        <!-- Upload View -->
+        <!-- ===== UPLOAD VIEW ===== -->
+        <!-- Upload and classify clothing images with AI -->
         <div id="upload-tab" class="tab-content hidden">
             <div class="glass rounded-3xl p-8">
                 <div class="text-center mb-8">
@@ -118,7 +124,7 @@
                         <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
                     </div>
 
-                    <!-- Processing Results -->
+                    <!-- Real-time AI classification results -->
                     <div id="processingArea" class="space-y-4">
                         <h3 class="text-xl font-semibold text-white">AI Classification</h3>
                         <div id="processingResults" class="bg-white/10 rounded-2xl p-6 h-64 overflow-y-auto">
@@ -135,7 +141,8 @@
             </div>
         </div>
 
-        <!-- Outfit Picker View -->
+        <!-- ===== OUTFIT PICKER VIEW ===== -->
+        <!-- AI-powered outfit generation with weather and style preferences -->
         <div id="outfit-tab" class="tab-content hidden">
             <div class="glass rounded-3xl p-8">
                 <div class="text-center mb-8">
@@ -143,7 +150,7 @@
                     <p class="text-white/80 text-lg">AI-powered outfit selection based on weather and style</p>
                 </div>
 
-                <!-- Preferences Panel -->
+                <!-- User style and color preferences for smart outfit generation -->
                 <div class="glass rounded-2xl p-6 mb-6">
                     <h3 class="text-xl font-semibold text-white mb-4 text-center">🎨 Style Preferences</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -196,7 +203,7 @@
                     </button>
                 </div>
 
-                <!-- Outfit Compatibility Score -->
+                <!-- AI-calculated outfit compatibility based on color, style, and weather -->
                 <div id="compatibilityScore" class="bg-white/10 rounded-2xl p-6 mb-8 text-center hidden">
                     <h3 class="text-xl font-semibold text-white mb-4">💖 Outfit Compatibility</h3>
                     <div class="flex items-center justify-center gap-4">
@@ -207,9 +214,9 @@
                     </div>
                 </div>
 
-                <!-- Outfit Categories -->
+                <!-- Dynamic outfit categories with rotation controls -->
                 <div id="outfitCategories" class="space-y-6">
-                    <!-- Will be populated dynamically -->
+                    <!-- Populated by renderOutfitCategories() -->
                 </div>
 
                 <!-- Selected Outfit Preview -->
@@ -222,7 +229,8 @@
             </div>
         </div>
 
-        <!-- Try On View -->
+        <!-- ===== VIRTUAL TRY-ON VIEW ===== -->
+        <!-- AR preview placeholder for future implementation -->
         <div id="tryon-tab" class="tab-content hidden">
             <div class="glass rounded-3xl p-8">
                 <div class="text-center mb-8">
@@ -266,7 +274,8 @@
         </div>
     </main>
 
-    <!-- Edit Item Modal -->
+    <!-- ========== EDIT ITEM MODAL ========== -->
+    <!-- Modal for editing clothing item properties -->
     <div id="editModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="if(event.target === this) closeEditModal()">
         <div class="glass rounded-3xl p-8 max-w-md w-full">
             <div class="flex items-center justify-between mb-6">
@@ -329,7 +338,8 @@
         </div>
     </div>
 
-    <!-- JavaScript Modules - Load in dependency order -->
+    <!-- ========== JAVASCRIPT MODULES ========== -->
+    <!-- Load in dependency order: config → utils → models → features -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/models.js"></script>
@@ -338,9 +348,9 @@
     <script src="js/closet.js"></script>
     <script src="js/outfit.js"></script>
 
-    <!-- Application Initialization -->
+    <!-- ========== APP INITIALIZATION ========== -->
     <script>
-        // Initialize app
+        // Initialize app on DOM load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Initializing Digital Closet app...');
             console.log('Clothing items:', clothingItems.length);
@@ -348,16 +358,16 @@
             updateItemCount();
             renderClothingGrid();
 
-            // Set initial model status
+            // Initialize AI model loading indicator
             updateModelStatus('loading');
 
-            // Load AI model
+            // Load Teachable Machine models asynchronously
             loadTeachableMachineModel();
             setupEventListeners();
 
             console.log('Event listeners set up');
 
-            // Add demo items if closet is empty (for testing)
+            // Populate with demo items if closet is empty
             if (clothingItems.length === 0) {
                 console.log('Adding demo items for testing...');
                 addDemoItems();
@@ -365,7 +375,7 @@
                 console.log(`Loaded ${clothingItems.length} existing items from storage`);
             }
 
-            // Initialize preference buttons
+            // Set visual state of user preference buttons
             updatePreferenceButtons();
 
             console.log('App initialization complete!');

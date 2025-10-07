@@ -1,13 +1,15 @@
-// Weather API Functions
+// ========== WEATHER API FUNCTIONS ==========
 
+// ===== GET WEATHER DATA =====
+// Fetch weather based on user's geolocation
 async function getWeather() {
     console.log('Requesting location for weather...');
 
-    // Update UI to show loading state
+    // Show loading indicator
     document.getElementById('weatherIcon').textContent = '⏳';
     document.getElementById('weatherText').textContent = 'Loading...';
 
-    // Detect Safari for specific handling
+    // Browser detection for compatibility handling
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
@@ -18,7 +20,7 @@ async function getWeather() {
         return;
     }
 
-    // Safari often doesn't support permissions API for geolocation
+    // Check geolocation permission (not supported in Safari)
     if (!isSafari && !isIOS && navigator.permissions) {
         try {
             const permission = await navigator.permissions.query({ name: 'geolocation' });
@@ -35,7 +37,7 @@ async function getWeather() {
         }
     }
 
-    // Safari-specific options (more generous timeout, less accuracy)
+    // Geolocation options optimized per browser
     const options = isSafari || isIOS ? {
         enableHighAccuracy: false,
         timeout: 15000, // Longer timeout for Safari
@@ -53,19 +55,19 @@ async function getWeather() {
             console.log('Location obtained:', position.coords);
 
             try {
-                // Use OpenWeatherMap API (free tier)
+                // Extract coordinates
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
 
-                // Get location name using reverse geocoding first to determine country
+                // Reverse geocode to get location name and country
                 const geoResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
                 const geoData = await geoResponse.json();
 
-                // Check if location is in the United States
+                // Determine temperature unit based on country
                 const isUS = geoData.countryCode === 'US';
                 const temperatureUnit = isUS ? 'fahrenheit' : 'celsius';
 
-                // Use free weather API with appropriate temperature unit
+                // Fetch weather data from Open-Meteo API
                 const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=${temperatureUnit}&timezone=auto`);
                 const weatherData = await weatherResponse.json();
 
@@ -84,7 +86,7 @@ async function getWeather() {
                 console.log('Real weather updated based on location:', currentWeather);
             } catch (apiError) {
                 console.error('Weather API error:', apiError);
-                // Fallback to mock data if API fails
+                // Use mock data if API fails
                 const mockWeather = {
                     temperature: Math.round(60 + Math.random() * 30),
                     temperatureUnit: '°F',
@@ -100,6 +102,7 @@ async function getWeather() {
             console.error('Location error:', error);
             let message = '';
 
+            // Provide user-friendly error messages
             switch (error.code) {
                 case error.PERMISSION_DENIED:
                     if (isSafari || isIOS) {
@@ -131,7 +134,8 @@ async function getWeather() {
     );
 }
 
-// Map weather codes to conditions
+// ===== WEATHER CODE MAPPING =====
+// Convert numeric weather code to condition name
 function getWeatherCondition(weathercode) {
     const codeMap = {
         0: 'sunny',
@@ -166,6 +170,8 @@ function getWeatherCondition(weathercode) {
     return codeMap[weathercode] || 'cloudy';
 }
 
+// ===== FALLBACK WEATHER =====
+// Use default weather when location unavailable
 function useDefaultWeather() {
     currentWeather = {
         temperature: 72,
@@ -177,6 +183,8 @@ function useDefaultWeather() {
     console.log('Using default weather:', currentWeather);
 }
 
+// ===== UI UPDATE =====
+// Update weather widget and info panel
 function updateWeatherDisplay() {
     const iconMap = {
         'sunny': '☀️',
@@ -191,7 +199,7 @@ function updateWeatherDisplay() {
     const tempUnit = currentWeather.temperatureUnit || '°C';
     document.getElementById('weatherText').textContent = `${currentWeather.temperature}${tempUnit}`;
 
-    // Update weather info panel
+    // Show weather details in outfit picker
     const weatherInfo = document.getElementById('weatherInfo');
     const weatherDetails = document.getElementById('weatherDetails');
 

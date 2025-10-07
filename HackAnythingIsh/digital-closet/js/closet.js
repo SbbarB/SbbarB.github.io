@@ -1,5 +1,7 @@
-// Closet Management Functions
+// ========== CLOSET MANAGEMENT ==========
 
+// ===== RENDER GRID =====
+// Display all clothing items in responsive grid
 function renderClothingGrid() {
     const grid = document.getElementById('clothingGrid');
 
@@ -37,8 +39,10 @@ function renderClothingGrid() {
     `).join('');
 }
 
+// ===== CATEGORY FILTERING =====
+// Filter items by clothing category
 function filterCategory(category) {
-    // Update filter buttons
+    // Update active filter button
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-white/20', 'text-white');
         btn.classList.add('bg-white/10', 'text-white/80');
@@ -46,7 +50,7 @@ function filterCategory(category) {
     event.target.classList.add('active', 'bg-white/20', 'text-white');
     event.target.classList.remove('bg-white/10', 'text-white/80');
 
-    // Filter items
+    // Apply category filter
     const filteredItems = category === 'all' ? clothingItems :
         clothingItems.filter(item => item.category.toLowerCase().includes(category.toLowerCase()));
 
@@ -85,27 +89,30 @@ function filterCategory(category) {
     `).join('');
 }
 
+// ===== REMOVE ITEM =====
+// Delete item from closet
 async function removeItem(id) {
-    // Small delay for UI responsiveness
+    // Prevent UI blocking
     await new Promise(resolve => setTimeout(resolve, 10));
 
     clothingItems = clothingItems.filter(item => item.id !== id);
     localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
     updateItemCount();
 
-    // Small delay before heavy render
+    // Defer re-render
     await new Promise(resolve => setTimeout(resolve, 50));
     renderClothingGrid();
 }
 
-// Edit item functionality
+// ===== EDIT ITEM =====
+// Open modal to edit item properties
 function editItem(id) {
     const item = clothingItems.find(item => item.id === id);
     if (!item) return;
 
     currentEditingItemId = id;
 
-    // Populate modal with current values
+    // Pre-fill form with current values
     document.getElementById('editCategory').value = item.category;
     document.getElementById('editColor').value = item.color;
     document.getElementById('editStyle').value = item.style;
@@ -115,18 +122,20 @@ function editItem(id) {
     document.getElementById('editModal').classList.remove('hidden');
 }
 
+// Close edit modal
 function closeEditModal() {
     document.getElementById('editModal').classList.add('hidden');
     currentEditingItemId = null;
 }
 
+// Save edited item to localStorage
 async function saveEditedItem(event) {
     if (!currentEditingItemId) return;
 
     const itemIndex = clothingItems.findIndex(item => item.id === currentEditingItemId);
     if (itemIndex === -1) return;
 
-    // Get button and show immediate feedback
+    // Show loading state on button
     const saveBtn = event ? event.target : null;
     let originalText = '';
     if (saveBtn) {
@@ -135,23 +144,23 @@ async function saveEditedItem(event) {
         saveBtn.innerHTML = '⏳ Saving...';
     }
 
-    // Give UI time to update
+    // Allow UI update
     await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
-        // Update item with new values
+        // Apply form values to item
         clothingItems[itemIndex].category = document.getElementById('editCategory').value;
         clothingItems[itemIndex].color = document.getElementById('editColor').value.toLowerCase();
         clothingItems[itemIndex].style = document.getElementById('editStyle').value;
         clothingItems[itemIndex].description = document.getElementById('editDescription').value;
 
-        // Save to localStorage
+        // Persist changes
         localStorage.setItem('clueless-closet-items', JSON.stringify(clothingItems));
 
-        // Close modal first for immediate feedback
+        // Close modal immediately
         closeEditModal();
 
-        // Small delay before heavy render
+        // Defer re-render
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Update UI
@@ -168,6 +177,8 @@ async function saveEditedItem(event) {
     }
 }
 
+// ===== CLEAR ALL =====
+// Remove all items from closet
 function clearAllItems() {
     if (confirm('Are you sure you want to clear all items from your closet?')) {
         clothingItems = [];

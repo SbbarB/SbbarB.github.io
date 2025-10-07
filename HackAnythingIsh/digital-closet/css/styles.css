@@ -1,27 +1,35 @@
+/* ========== FONTS ========== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 body {
     font-family: 'Inter', sans-serif;
 }
 
+/* ========== ANIMATED GRADIENT BACKGROUND ========== */
+/* Multi-color gradient with smooth animation */
 .gradient-bg {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
 }
 
+/* Animate gradient position for smooth color transitions */
 @keyframes gradientShift {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
+/* ========== GLASS MORPHISM EFFECT ========== */
+/* Frosted glass aesthetic for panels and cards */
 .glass {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* ========== CLOTHING ITEM CARDS ========== */
+/* Hover lift effect for clothing cards */
 .clothing-item {
     transition: all 0.3s ease;
 }
@@ -31,14 +39,20 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+/* ========== SCROLLING BEHAVIOR ========== */
+/* Smooth scrolling for category navigation */
 .category-scroll {
     scroll-behavior: smooth;
 }
 
+/* ========== WEATHER WIDGET ========== */
+/* Blue gradient for weather display */
 .weather-widget {
     background: linear-gradient(135deg, #74b9ff, #0984e3);
 }
 
+/* ========== FILE UPLOAD AREA ========== */
+/* Dashed border with hover feedback */
 .upload-area {
     border: 2px dashed rgba(255, 255, 255, 0.3);
     transition: all 0.3s ease;
@@ -49,10 +63,13 @@ body {
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* ========== OUTFIT ROTATION ANIMATION ========== */
+/* Smooth transition for outfit item rotation */
 .outfit-wheel {
     transition: transform 0.5s ease;
 }
 
+/* Spinning animation for loading states */
 .spinning {
     animation: spin 1s linear infinite;
 }

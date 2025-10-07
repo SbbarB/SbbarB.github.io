@@ -1,6 +1,8 @@
+// ========== AI MODEL FUNCTIONS ==========
 // Teachable Machine model loading and image classification
 
-// Wait for libraries to load
+// ===== LIBRARY INITIALIZATION =====
+// Wait for TensorFlow.js and Teachable Machine libraries to load
 function waitForLibraries() {
     return new Promise((resolve) => {
         const checkLibraries = () => {
@@ -16,12 +18,13 @@ function waitForLibraries() {
     });
 }
 
-// Load Teachable Machine Model
+// ===== MODEL LOADING =====
+// Load both item and style classification models
 async function loadTeachableMachineModel() {
     try {
         console.log('Loading Teachable Machine models...');
 
-        // Wait for libraries to be available
+        // Ensure TensorFlow.js and tmImage are loaded
         await waitForLibraries();
 
         const itemModelURL = 'https://teachablemachine.withgoogle.com/models/jyXDTYz6M/model.json';
@@ -30,7 +33,7 @@ async function loadTeachableMachineModel() {
         const styleModelURL = 'https://teachablemachine.withgoogle.com/models/18jaLQpyB/model.json';
         const styleMetadataURL = 'https://teachablemachine.withgoogle.com/models/18jaLQpyB/metadata.json';
 
-        // Double-check libraries are available
+        // Verify libraries loaded successfully
         if (typeof tmImage === 'undefined') {
             throw new Error('Teachable Machine Image library not available after waiting');
         }
@@ -39,20 +42,22 @@ async function loadTeachableMachineModel() {
             throw new Error('TensorFlow.js library not available after waiting');
         }
 
+        // Load item classification model (shirts, pants, etc.)
         console.log('Loading item classification model from:', itemModelURL);
         model = await tmImage.load(itemModelURL, itemMetadataURL);
         console.log('Item model loaded successfully');
         console.log('Item model class names:', model.getClassLabels());
 
+        // Load style classification model (casual, formal, etc.)
         console.log('Loading style classification model from:', styleModelURL);
         styleModel = await tmImage.load(styleModelURL, styleMetadataURL);
         console.log('Style model loaded successfully');
         console.log('Style model class names:', styleModel.getClassLabels());
 
-        // Add visual confirmation
+        // Notify user that models are ready
         showNotification('AI models loaded successfully! Ready to classify clothing.', 'success');
 
-        // Update status indicator
+        // Update header status indicator
         updateModelStatus('loaded');
     } catch (error) {
         console.error('Failed to load Teachable Machine models:', error);
@@ -60,12 +65,13 @@ async function loadTeachableMachineModel() {
         model = null;
         styleModel = null;
 
-        // Update status indicator
+        // Update header with error state
         updateModelStatus('failed');
     }
 }
 
-// Classify image using Teachable Machine models
+// ===== IMAGE CLASSIFICATION =====
+// Classify clothing item using AI models
 async function classifyImage(imageData) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -73,25 +79,25 @@ async function classifyImage(imageData) {
             let canvas = null;
             try {
                 if (model) {
-                    // Get canvas from pool for efficient reuse
+                    // Use pooled canvas for performance
                     canvas = getCanvas();
                     const ctx = canvas.getContext('2d');
 
-                    // Draw and resize the image to 224x224
+                    // Resize to model's expected input size (224x224)
                     ctx.drawImage(img, 0, 0, 224, 224);
 
-                    // Get predictions from the item classification model
+                    // Run item classification (shirt, pants, etc.)
                     const itemPredictions = await model.predict(canvas);
 
-                    // Sort predictions by probability and get top results
+                    // Get highest confidence prediction
                     const sortedItemPredictions = itemPredictions.sort((a, b) => b.probability - a.probability);
                     const topItemPrediction = sortedItemPredictions[0];
 
-                    // Clean up the category name (remove any extra spaces, make lowercase)
+                    // Normalize category name
                     const category = topItemPrediction.className.toLowerCase().trim();
                     const confidence = topItemPrediction.probability;
 
-                    // Get style from second model if available, otherwise use fallback
+                    // Classify style using second model
                     let style;
                     if (styleModel) {
                         const stylePredictions = await styleModel.predict(canvas);
@@ -99,11 +105,11 @@ async function classifyImage(imageData) {
                         const topStylePrediction = sortedStylePredictions[0];
                         style = topStylePrediction.className.toLowerCase().trim();
                     } else {
-                        // Fallback to determineStyle function if style model not loaded
+                        // Use fallback heuristics if model unavailable
                         style = determineStyle(category);
                     }
 
-                    // Only proceed with classification if confidence is reasonable
+                    // Reject low-confidence predictions
                     if (confidence < 0.1) {
                         console.warn('Low confidence prediction, using fallback');
                         resolve({
@@ -116,7 +122,7 @@ async function classifyImage(imageData) {
                         return;
                     }
 
-                    // Determine color based on image analysis
+                    // Extract dominant color from image
                     const color = await analyzeColor(img, category);
 
                     const finalResult = {
@@ -127,14 +133,14 @@ async function classifyImage(imageData) {
                         timestamp: Date.now()
                     };
 
-                    // Release canvas back to pool
+                    // Return canvas to pool for reuse
                     if (canvas) releaseCanvas(canvas);
 
                     resolve(finalResult);
                 } else {
                     console.warn('Models not loaded, using fallback classification');
 
-                    // Enhanced fallback classification
+                    // Generic fallback when models unavailable
                     resolve({
                         category: 'clothing',
                         confidence: 0.7,
@@ -146,7 +152,7 @@ async function classifyImage(imageData) {
             } catch (error) {
                 console.error('Classification error:', error);
 
-                // Release canvas even on error
+                // Clean up canvas on error
                 if (canvas) releaseCanvas(canvas);
 
                 resolve({
@@ -158,12 +164,13 @@ async function classifyImage(imageData) {
                 });
             }
         };
-        img.crossOrigin = 'anonymous'; // Handle CORS issues
+        img.crossOrigin = 'anonymous'; // Prevent CORS errors
         img.src = imageData;
     });
 }
 
-// Advanced color analysis using canvas pixel data
+// ===== COLOR ANALYSIS =====
+// Extract dominant color from image center region
 async function analyzeColor(img, category) {
     try {
         const canvas = document.createElement('canvas');
@@ -172,14 +179,14 @@ async function analyzeColor(img, category) {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
-        // Sample pixels from the center area (where clothing usually is)
+        // Focus on center where clothing is typically located
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const sampleSize = Math.min(canvas.width, canvas.height) / 4;
 
         let r = 0, g = 0, b = 0, count = 0;
 
-        // Sample pixels in a grid pattern
+        // Sample every 10th pixel in center region
         for (let x = centerX - sampleSize/2; x < centerX + sampleSize/2; x += 10) {
             for (let y = centerY - sampleSize/2; y < centerY + sampleSize/2; y += 10) {
                 if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
@@ -198,17 +205,18 @@ async function analyzeColor(img, category) {
         g = Math.round(g / count);
         b = Math.round(b / count);
 
-        // Convert RGB to color name
+        // Map RGB values to nearest color name
         return rgbToColorName(r, g, b);
     } catch (error) {
         console.error('Color analysis error:', error);
-        return 'blue'; // Default fallback
+        return 'blue'; // Safe default
     }
 }
 
-// Convert RGB values to human-readable color names
+// ===== COLOR MAPPING =====
+// Map RGB to closest named color using Euclidean distance
 function rgbToColorName(r, g, b) {
-    // Calculate color distances and determine closest color
+    // Predefined color palette
     const colors = {
         'black': [0, 0, 0],
         'white': [255, 255, 255],
@@ -229,6 +237,7 @@ function rgbToColorName(r, g, b) {
     let closestColor = 'black';
     let minDistance = Infinity;
 
+    // Find closest color using Euclidean distance
     for (const [colorName, [cr, cg, cb]] of Object.entries(colors)) {
         const distance = Math.sqrt(
             Math.pow(r - cr, 2) +
@@ -245,11 +254,12 @@ function rgbToColorName(r, g, b) {
     return closestColor;
 }
 
-// Determine style based on category - Fallback function (style is now determined by second model)
+// ===== STYLE FALLBACK =====
+// Determine style from category when style model unavailable
 function determineStyle(category) {
     const categoryLower = category.toLowerCase();
 
-    // Direct mapping for fallback when style model is not available
+    // Category to style mapping
     const modelStyleMap = {
         // Formal items
         'long dress': 'formal',
@@ -276,12 +286,12 @@ function determineStyle(category) {
         'glasses': 'minimalist'
     };
 
-    // Check direct mapping first
+    // Return mapped style if found
     if (modelStyleMap[categoryLower]) {
         return modelStyleMap[categoryLower];
     }
 
-    // Fallback style detection based on keywords
+    // Keyword-based fallback detection
     const styleKeywords = {
         'formal': ['dress', 'coat', 'suit'],
         'casual': ['shirt', 'sleeve', 'sweater', 'tank', 'shorts', 'pants', 'skirt'],
@@ -291,14 +301,14 @@ function determineStyle(category) {
         'vintage': ['vintage', 'retro', 'classic']
     };
 
-    // Check keywords
+    // Match against keyword patterns
     for (const [style, keywords] of Object.entries(styleKeywords)) {
         if (keywords.some(keyword => categoryLower.includes(keyword))) {
             return style;
         }
     }
 
-    // Smart defaults based on clothing type
+    // Category-based heuristics
     if (categoryLower.includes('dress')) {
         return 'formal';
     } else if (categoryLower.includes('sleeve') || categoryLower.includes('sweater')) {

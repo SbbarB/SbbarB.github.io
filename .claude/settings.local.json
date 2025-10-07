@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(open digital-closet-final.html)",
+      "Bash(curl -s \"https://api.open-meteo.com/v1/forecast?latitude=37.7749&longitude=-122.4194&current_weather=true&timezone=auto\")",
+      "Bash(curl -s \"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=37.7749&longitude=-122.4194&localityLanguage=en\")",
+      "Bash(open test-weather.html)",
+      "Bash(open:*)",
+      "Bash(curl -s -I \"https://teachablemachine.withgoogle.com/models/jyXDTYz6M/model.json\")",
+      "Bash(curl -s -I \"https://teachablemachine.withgoogle.com/models/18jaLQpyB/model.json\")",
+      "Read(//tmp/**)",
+      "Bash(tree:*)",
+      "Bash(awk:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
