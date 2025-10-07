@@ -6,6 +6,7 @@ An AI-powered virtual closet application inspired by the movie "Clueless" that h
 
 - **AI-Powered Classification**: Automatically categorizes clothing items using Teachable Machine models
 - **Smart Outfit Generation**: AI suggests outfit combinations based on weather and your style preferences
+- **AR Virtual Try-On**: Real-time pose detection with MediaPipe to visualize outfits on your body
 - **Weather Integration**: Real-time weather data influences outfit recommendations
 - **Batch Upload**: Process multiple clothing images at once with progress tracking
 - **Item Management**: Edit, organize, and remove items from your digital closet
@@ -68,7 +69,8 @@ digital-closet/
 │   ├── weather.js      # Weather API integration
 │   ├── upload.js       # File upload and processing
 │   ├── closet.js       # Closet management
-│   └── outfit.js       # Outfit generation logic
+│   ├── outfit.js       # Outfit generation logic
+│   └── ar-tryon.js     # AR virtual try-on with MediaPipe
 └── assets/             # Static assets (empty for now)
 ```
 
@@ -85,6 +87,9 @@ digital-closet/
 - **Teachable Machine** - Custom image classification models
   - Item Model: Classifies clothing types (shirts, pants, dresses, etc.)
   - Style Model: Determines style categories (casual, formal, athletic, etc.)
+- **MediaPipe** - Real-time pose detection for AR try-on
+  - Pose Landmarker: 33-point body pose estimation
+  - GPU-accelerated inference for smooth AR experience
 
 ### APIs
 - **Open-Meteo API** - Free weather data without API keys
@@ -116,10 +121,27 @@ digital-closet/
 4. Click "🎯 Generate Smart Outfit" or "🎲 Random Outfit"
 5. View outfit suggestions with compatibility scores
 
-### 4. Try On (AR Feature)
-- Advanced feature for virtual try-on
-- Uses MediaPipe for pose detection
-- Currently in experimental stage
+### 4. Virtual Try-On (AR Feature)
+1. Go to "🎭 Try On" tab
+2. Ensure you have an outfit selected from "Pick Outfit"
+3. Click "🚀 Start AR Try-On"
+4. Allow camera access when prompted
+5. Stand in front of camera - AI will detect your pose
+6. Use AR controls to adjust:
+   - **Scale**: Resize clothing items
+   - **Offset Y**: Move items up/down
+   - **Width**: Adjust clothing width
+   - **Toggle**: Show/hide clothing overlay
+   - **Debug**: View pose detection skeleton
+7. Click "❌ Exit AR Mode" when done
+
+**AR Features:**
+- Real-time pose detection using MediaPipe
+- Body-mapped clothing placement
+- Automatic background removal for clothing
+- Adjustable fit and positioning
+- Debug mode to visualize pose tracking
+- FPS counter and status indicators
 
 ## 💾 Storage
 
@@ -196,6 +218,16 @@ Each module is independent and easy to modify:
 - Try uploading fewer images at once
 - Check browser console for specific errors
 
+### AR Try-On Not Working
+- **Camera Access**: Allow camera permissions when prompted
+- **HTTPS Required**: AR features work on localhost or HTTPS sites only
+- **Browser Compatibility**: Use Chrome, Edge, or Safari (latest versions)
+- **Select Outfit First**: Must have items selected before starting AR
+- **Lighting**: Ensure good lighting for better pose detection
+- **Clear View**: Stand 3-6 feet from camera, full body visible
+- **Performance**: Close other tabs/apps if experiencing lag
+- **MediaPipe Loading**: Wait for "Pose Detection: Ready" status
+
 ## 📝 Development Notes
 
 ### Module Loading Order
@@ -207,6 +239,7 @@ Critical for functionality - do not change:
 5. `upload.js` - File processing
 6. `closet.js` - Item management
 7. `outfit.js` - Outfit generation
+8. `ar-tryon.js` - AR virtual try-on (depends on outfit state)
 
 ### Performance Optimizations
 - **Canvas pooling** for efficient image processing
@@ -239,9 +272,11 @@ This is a personal project created for educational and entertainment purposes.
 - [ ] Calendar view for outfit planning
 - [ ] Laundry tracking
 - [ ] Outfit history and favorites
-- [ ] More advanced AR try-on features
+- [x] **AR virtual try-on with pose detection** ✅
+- [ ] Enhanced AR features (better background removal, fabric simulation)
 - [ ] Social features (outfit voting, comments)
 - [ ] Integration with shopping sites
+- [ ] Body measurements and sizing recommendations
 
 ## 💡 Tips
 

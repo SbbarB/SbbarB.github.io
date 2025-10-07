@@ -230,8 +230,87 @@
         </div>
 
         <!-- ===== VIRTUAL TRY-ON VIEW ===== -->
-        <!-- AR preview placeholder for future implementation -->
         <div id="tryon-tab" class="tab-content hidden">
+            <!-- Fullscreen AR Try-On (when active) -->
+            <div id="arFullscreen" class="fixed inset-0 z-50 hidden">
+                <!-- Fullscreen Camera Video -->
+                <video id="arCameraVideo" autoplay muted playsinline style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1;"></video>
+
+                <!-- Canvas for 3D Clothing Overlay -->
+                <canvas id="arOverlayCanvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2; pointer-events: none;"></canvas>
+
+                <!-- AR Control Panels -->
+                <div style="position: fixed; top: 16px; left: 16px; max-width: 300px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); border-radius: 12px; padding: 16px; z-index: 10;">
+                    <h2 class="text-lg font-semibold mb-3 text-white">👗 AR Clothing Try-On</h2>
+
+                    <!-- Status -->
+                    <div class="mb-4 text-sm space-y-1">
+                        <div id="arPoseStatus">
+                            <span class="arStatusDot" style="width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background-color: #fbbf24; animation: pulse 1.5s infinite;"></span>
+                            <span class="text-white">Pose Detection: Loading...</span>
+                        </div>
+                    </div>
+
+                    <!-- Exit AR -->
+                    <button onclick="exitAR()"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors mb-3">
+                        ❌ Exit AR Mode
+                    </button>
+
+                    <!-- Current Outfit Display -->
+                    <div id="arCurrentOutfitDisplay" class="text-center text-white/60 mb-3">
+                        <p class="text-sm">Current outfit will show here</p>
+                    </div>
+                </div>
+
+                <!-- AR Controls Panel -->
+                <div id="arControlsPanel" style="position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); border-radius: 12px; padding: 16px; z-index: 10; display: none;">
+                    <h3 class="text-lg font-semibold mb-3 text-white">🎮 AR Controls</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm mb-1 text-white">Scale: <span id="arScaleValue">1.0</span></label>
+                            <input type="range" id="arScaleSlider" min="0.5" max="3" step="0.1" value="1"
+                                   onchange="updateARClothingTransform()" class="w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-white">Offset Y: <span id="arOffsetValue">0</span></label>
+                            <input type="range" id="arOffsetSlider" min="-100" max="100" step="5" value="0"
+                                   onchange="updateARClothingTransform()" class="w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-white">Width: <span id="arWidthValue">1.6</span></label>
+                            <input type="range" id="arWidthSlider" min="0.8" max="2.5" step="0.1" value="1.6"
+                                   onchange="updateARClothingTransform()" class="w-full">
+                        </div>
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="toggleARClothing()" id="arToggleBtn"
+                                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg transition-colors text-sm">
+                                👁️ Toggle
+                            </button>
+                            <button onclick="resetARTransform()"
+                                    class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg transition-colors text-sm">
+                                🔄 Reset
+                            </button>
+                        </div>
+                        <button onclick="toggleARDebugMode()" id="arDebugBtn"
+                                class="w-full bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-sm">
+                            🔧 Debug
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Debug Info -->
+                <div style="position: fixed; bottom: 16px; right: 16px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); border-radius: 12px; padding: 16px; z-index: 10; display: none;" id="arDebugInfo">
+                    <div class="text-xs text-white space-y-1">
+                        <div>FPS: <span id="arFpsCounter">0</span></div>
+                        <div>Person Detected: <span id="arPersonDetected">❌</span></div>
+                        <div>Clothing Active: <span id="arClothingActive">❌</span></div>
+                        <div>Body Parts: <span id="arBodyParts">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regular Try-On View -->
             <div class="glass rounded-3xl p-8">
                 <div class="text-center mb-8">
                     <h2 class="text-4xl font-bold text-white mb-4">Virtual Try-On</h2>
@@ -245,7 +324,10 @@
                             <div class="flex flex-col items-center justify-center h-full text-white">
                                 <div class="text-6xl mb-4">🎭</div>
                                 <h3 class="text-2xl font-semibold mb-4">AR Try-On Camera</h3>
-                                <p class="text-white/70 mb-6 text-center">AR Try-On features available in full version</p>
+                                <p class="text-white/70 mb-6 text-center">Start the AR camera to see your outfit in real-time</p>
+                                <button onclick="startARTryOn()" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold transition-all transform hover:scale-105">
+                                    🚀 Start AR Try-On
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -338,48 +420,8 @@
         </div>
     </div>
 
-    <!-- ========== JAVASCRIPT MODULES ========== -->
-    <!-- Load in dependency order: config → utils → models → features -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/models.js"></script>
-    <script src="js/weather.js"></script>
-    <script src="js/upload.js"></script>
-    <script src="js/closet.js"></script>
-    <script src="js/outfit.js"></script>
-
-    <!-- ========== APP INITIALIZATION ========== -->
-    <script>
-        // Initialize app on DOM load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing Digital Closet app...');
-            console.log('Clothing items:', clothingItems.length);
-
-            updateItemCount();
-            renderClothingGrid();
-
-            // Initialize AI model loading indicator
-            updateModelStatus('loading');
-
-            // Load Teachable Machine models asynchronously
-            loadTeachableMachineModel();
-            setupEventListeners();
-
-            console.log('Event listeners set up');
-
-            // Populate with demo items if closet is empty
-            if (clothingItems.length === 0) {
-                console.log('Adding demo items for testing...');
-                addDemoItems();
-            } else {
-                console.log(`Loaded ${clothingItems.length} existing items from storage`);
-            }
-
-            // Set visual state of user preference buttons
-            updatePreferenceButtons();
-
-            console.log('App initialization complete!');
-        });
-    </script>
+    <!-- ========== JAVASCRIPT ========== -->
+    <!-- Complete app logic extracted from digital-closet-final.html -->
+    <script src="js/app.js"></script>
 </body>
 </html>
