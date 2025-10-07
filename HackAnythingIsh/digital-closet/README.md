@@ -22,17 +22,36 @@ An AI-powered virtual closet application inspired by the movie "Clueless" that h
 
 ### Running Locally
 
-1. Start a local web server in the project directory:
+**Option 1: Python HTTP Server (All platforms)**
+
+1. Navigate to the digital-closet directory:
    ```bash
+   cd HackAnythingIsh/digital-closet
+   ```
+
+2. Start a local web server (will auto-select an available port):
+   ```bash
+   # Try port 8000
    python3 -m http.server 8000
+
+   # If port 8000 is in use, try another port (e.g., 8001, 8080, 3000)
+   python3 -m http.server 8080
    ```
 
-2. Open your browser and navigate to:
-   ```
-   http://localhost:8000/
-   ```
+3. Open your browser and navigate to the URL shown in the terminal output (e.g., `http://localhost:8000/`)
 
-3. Click "Allow" when prompted for location access (for weather features)
+4. Click "Allow" when prompted for location access (for weather features)
+
+5. To stop the server: Press `Ctrl+C` in the terminal window
+
+**Option 2: Simply open the HTML file**
+
+You can also just open `index.html` directly in your browser:
+- **Mac/Linux**: `open index.html`
+- **Windows**: Double-click `index.html` or `start index.html` from command prompt
+- **Any OS**: Drag `index.html` into your browser
+
+Note: Some features (like AI models) may work better with a local server due to CORS restrictions.
 
 ## 📁 Project Structure
 
