@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brett Rabbs - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: #666;
+            font-weight: 400;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .legend-item {
+            padding: 0.75rem 1rem;
+            flex: 1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .legend-item[data-category="creative-tech"] {
+            background: #2f2f2f;
+            border: 1px solid #3f3f3f;
+        }
+
+        .legend-item[data-category="ai-gen"] {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+        }
+
+        .legend-item[data-category="art"] {
+            background: #353535;
+            border: 1px solid #454545;
+        }
+
+        .legend-item[data-category="writing"] {
+            background: #252525;
+            border: 1px solid #353535;
+        }
+
+        .legend-label {
+            font-size: 0.65rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+            transition: color 0.3s ease;
+        }
+
+        .legend-count {
+            font-size: 1.1rem;
+            color: #999;
+            font-weight: 300;
+            transition: color 0.3s ease;
+        }
+
+        /* Legend hover states */
+        .legend-item:hover,
+        .legend-item.active {
+            transform: scale(1.05);
+        }
+
+        .legend-item[data-category="creative-tech"]:hover,
+        .legend-item[data-category="creative-tech"].active {
+            background: #2a1a3a;
+            border-color: #8b5cf6;
+        }
+
+        .legend-item[data-category="creative-tech"]:hover .legend-label,
+        .legend-item[data-category="creative-tech"].active .legend-label {
+            color: #a78bfa;
+        }
+
+        .legend-item[data-category="creative-tech"]:hover .legend-count,
+        .legend-item[data-category="creative-tech"].active .legend-count {
+            color: #8b5cf6;
+        }
+
+        .legend-item[data-category="ai-gen"]:hover,
+        .legend-item[data-category="ai-gen"].active {
+            background: #3a1a1a;
+            border-color: #ef4444;
+        }
+
+        .legend-item[data-category="ai-gen"]:hover .legend-label,
+        .legend-item[data-category="ai-gen"].active .legend-label {
+            color: #f87171;
+        }
+
+        .legend-item[data-category="ai-gen"]:hover .legend-count,
+        .legend-item[data-category="ai-gen"].active .legend-count {
+            color: #ef4444;
+        }
+
+        .legend-item[data-category="art"]:hover,
+        .legend-item[data-category="art"].active {
+            background: #1a3a1a;
+            border-color: #22c55e;
+        }
+
+        .legend-item[data-category="art"]:hover .legend-label,
+        .legend-item[data-category="art"].active .legend-label {
+            color: #4ade80;
+        }
+
+        .legend-item[data-category="art"]:hover .legend-count,
+        .legend-item[data-category="art"].active .legend-count {
+            color: #22c55e;
+        }
+
+        .legend-item[data-category="writing"]:hover,
+        .legend-item[data-category="writing"].active {
+            background: #1a2a3a;
+            border-color: #6366f1;
+        }
+
+        .legend-item[data-category="writing"]:hover .legend-label,
+        .legend-item[data-category="writing"].active .legend-label {
+            color: #818cf8;
+        }
+
+        .legend-item[data-category="writing"]:hover .legend-count,
+        .legend-item[data-category="writing"].active .legend-count {
+            color: #6366f1;
+        }
+
+        /* Table Container */
+        .table-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Periodic Table */
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 0.35rem;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 18/4;
+        }
+
+        /* Element Card - GREYSCALE by default */
+        .element {
+            aspect-ratio: 1;
+            padding: 0.4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Grayscale shades - distinct luminance levels */
+        .element.creative-tech {
+            background: #2f2f2f;
+            border: 1px solid #3f3f3f;
+        }
+
+        .element.ai-gen {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+        }
+
+        .element.art {
+            background: #353535;
+            border: 1px solid #454545;
+        }
+
+        .element.writing {
+            background: #252525;
+            border: 1px solid #353535;
+        }
+
+        .element:hover {
+            transform: scale(1.15);
+            z-index: 100;
+        }
+
+        /* Empty cells */
+        .element.empty {
+            background: transparent;
+            border: 1px solid #0f0f0f;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .element.empty:hover {
+            transform: none;
+        }
+
+        /* Color states - only on hover */
+        .element.creative-tech:hover {
+            background: #2a1a3a;
+            border-color: #8b5cf6;
+        }
+
+        .element.creative-tech:hover .element-symbol {
+            color: #8b5cf6;
+        }
+
+        .element.creative-tech:hover {
+            border-color: #a78bfa;
+        }
+
+        .element.ai-gen:hover {
+            background: #3a1a1a;
+            border-color: #ef4444;
+        }
+
+        .element.ai-gen:hover .element-symbol {
+            color: #ef4444;
+        }
+
+        .element.ai-gen:hover {
+            border-color: #f87171;
+        }
+
+        .element.art:hover {
+            background: #1a3a1a;
+            border-color: #22c55e;
+        }
+
+        .element.art:hover .element-symbol {
+            color: #22c55e;
+        }
+
+        .element.art:hover {
+            border-color: #4ade80;
+        }
+
+        .element.writing:hover {
+            background: #1a2a3a;
+            border-color: #6366f1;
+        }
+
+        .element.writing:hover .element-symbol {
+            color: #6366f1;
+        }
+
+        .element.writing:hover {
+            border-color: #818cf8;
+        }
+
+        /* Active states via JavaScript classes */
+        body.category-active .element {
+            filter: brightness(0.5);
+        }
+
+        body.category-active .element.category-selected {
+            filter: brightness(1);
+            transform: scale(1.08);
+        }
+
+        body.category-active .element.creative-tech.category-selected {
+            background: #2a1a3a;
+            border-color: #8b5cf6;
+        }
+
+        body.category-active .element.creative-tech.category-selected .element-symbol {
+            color: #8b5cf6;
+        }
+
+        body.category-active .element.ai-gen.category-selected {
+            background: #3a1a1a;
+            border-color: #ef4444;
+        }
+
+        body.category-active .element.ai-gen.category-selected .element-symbol {
+            color: #ef4444;
+        }
+
+        body.category-active .element.art.category-selected {
+            background: #1a3a1a;
+            border-color: #22c55e;
+        }
+
+        body.category-active .element.art.category-selected .element-symbol {
+            color: #22c55e;
+        }
+
+        body.category-active .element.writing.category-selected {
+            background: #1a2a3a;
+            border-color: #6366f1;
+        }
+
+        body.category-active .element.writing.category-selected .element-symbol {
+            color: #6366f1;
+        }
+
+        /* Atomic Number */
+        .atomic-number {
+            font-size: 0.5rem;
+            font-weight: 500;
+            color: #444;
+            position: absolute;
+            top: 0.3rem;
+            left: 0.3rem;
+        }
+
+        /* Element Symbol */
+        .element-symbol {
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: #999;
+            text-align: center;
+            margin: auto 0;
+            letter-spacing: -0.02em;
+            transition: color 0.3s ease;
+        }
+
+        /* Element Name */
+        .element-name {
+            font-size: 0.45rem;
+            font-weight: 400;
+            color: #666;
+            text-align: center;
+            letter-spacing: 0.01em;
+            line-height: 1.1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Status indicator */
+        .status-dot {
+            position: absolute;
+            top: 0.3rem;
+            right: 0.3rem;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #2a2a2a;
+        }
+
+        .status-dot.completed {
+            background: #4a8a6a;
+        }
+
+        .status-dot.coming-soon {
+            background: #555;
+            opacity: 0.4;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            padding: 2.5rem;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0.5rem;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-number {
+            font-size: 0.7rem;
+            color: #444;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.75rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .modal-category {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-description {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #999;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-status {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            font-size: 0.65rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .modal-status.completed {
+            color: #4ade80;
+            border-color: #22c55e;
+        }
+
+        /* Category-specific modal colors */
+        .modal.creative-tech .modal-content {
+            border-color: #8b5cf6;
+        }
+
+        .modal.creative-tech .modal-title {
+            color: #8b5cf6;
+        }
+
+        .modal.ai-gen .modal-content {
+            border-color: #ef4444;
+        }
+
+        .modal.ai-gen .modal-title {
+            color: #ef4444;
+        }
+
+        .modal.art .modal-content {
+            border-color: #22c55e;
+        }
+
+        .modal.art .modal-title {
+            color: #22c55e;
+        }
+
+        .modal.writing .modal-content {
+            border-color: #6366f1;
+        }
+
+        .modal.writing .modal-title {
+            color: #6366f1;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .periodic-table {
+                grid-template-columns: repeat(12, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.25rem;
+            }
+
+            .periodic-table {
+                grid-template-columns: repeat(9, 1fr);
+                gap: 0.25rem;
+            }
+
+            .element-symbol {
+                font-size: 1rem;
+            }
+
+            .element-name {
+                font-size: 0.4rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .periodic-table {
+                grid-template-columns: repeat(6, 1fr);
+            }
+
+            .element-symbol {
+                font-size: 0.9rem;
+            }
+
+            .legend {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Brett Rabbs</h1>
+        <p class="subtitle">Portfolio Index</p>
+    </header>
+
+    <div class="legend" id="legend">
+        <div class="legend-item" data-category="creative-tech">
+            <div class="legend-label">Creative Tech</div>
+            <div class="legend-count" id="count-creative-tech">0</div>
+        </div>
+        <div class="legend-item" data-category="ai-gen">
+            <div class="legend-label">AI Generation</div>
+            <div class="legend-count" id="count-ai-gen">0</div>
+        </div>
+        <div class="legend-item" data-category="art">
+            <div class="legend-label">Art</div>
+            <div class="legend-count" id="count-art">0</div>
+        </div>
+        <div class="legend-item" data-category="writing">
+            <div class="legend-label">Writing</div>
+            <div class="legend-count" id="count-writing">0</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="periodic-table" id="periodic-table"></div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-number" id="modal-number"></div>
+            <h2 class="modal-title" id="modal-title"></h2>
+            <p class="modal-category" id="modal-category"></p>
+            <div class="modal-description" id="modal-description"></div>
+            <div class="modal-status" id="modal-status"></div>
+        </div>
+    </div>
+
+    <script>
+        const projects = [
+            // Creative Technology - 13 projects (PURPLE)
+            { symbol: 'Mb', name: 'Mailbox', category: 'creative-tech', fullCategory: 'IDC2 - Physical Object', description: 'Interactive design for communication. A reimagined approach to physical mail interaction.', status: 'completed' },
+            { symbol: 'Pp', name: 'PillPal', category: 'creative-tech', fullCategory: 'Healthcare Design', description: 'Smart medication management system. Helping users stay on track with their health routines.', status: 'completed' },
+            { symbol: 'Fc', name: 'Focus Clapper', category: 'creative-tech', fullCategory: 'Wearable Technology', description: 'Haptic feedback device for attention and focus enhancement through rhythmic patterns.', status: 'completed' },
+            { symbol: 'Pd', name: 'Posture Detector', category: 'creative-tech', fullCategory: 'Computer Vision', description: 'Real-time posture analysis system using machine learning to promote better ergonomics.', status: 'completed' },
+            { symbol: 'Sb', name: 'Soft Button', category: 'creative-tech', fullCategory: 'Physical Computing', description: 'Experimental soft robotics interface exploring tactile interaction design.', status: 'completed' },
+            { symbol: 'Cf', name: 'CompFab', category: 'creative-tech', fullCategory: 'Digital Fabrication', description: 'Computational fabrication project exploring parametric design and manufacturing.', status: 'completed' },
+            { symbol: 'Bg', name: 'Backgammon', category: 'creative-tech', fullCategory: 'Product Design', description: 'Custom-designed travel backgammon set with integrated storage solutions.', status: 'completed' },
+            { symbol: 'Cc', name: 'Clueless Closet', category: 'creative-tech', fullCategory: 'Interactive Installation', description: 'AI-powered wardrobe assistant helping users organize and style their clothing.', status: 'completed' },
+            { symbol: 'Gb', name: 'Grav Bat', category: 'creative-tech', fullCategory: 'Energy Systems', description: 'Innovative gravity-powered energy generation system. Featured in news coverage.', status: 'completed' },
+            { symbol: 'Fp', name: 'Freshman Projects', category: 'creative-tech', fullCategory: 'Early Work', description: 'A collection of foundational projects from first-year explorations in design and technology.', status: 'completed' },
+            { symbol: 'Sx', name: 'Sound Experiments', category: 'creative-tech', fullCategory: 'Audio Design', description: 'Interactive sound installations and audio visualization projects.', status: 'completed' },
+            { symbol: 'Vp', name: 'Volumetric Printer', category: 'creative-tech', fullCategory: '3D Printing', description: 'Next-generation volumetric 3D printing technology research and development.', status: 'coming-soon' },
+            { symbol: 'Lr', name: 'Lego Racecar', category: 'creative-tech', fullCategory: 'Robotics', description: 'Autonomous racing vehicle project with Dr. Liz. Advanced sensor integration and control systems.', status: 'coming-soon' },
+
+            // AI Generation - 3 projects (RED)
+            { symbol: 'Ai', name: 'AI Portfolio', category: 'ai-gen', fullCategory: 'Generative AI', description: 'Collection of AI-generated artworks and experiments with machine learning models.', status: 'coming-soon' },
+            { symbol: 'Ml', name: 'ML Models', category: 'ai-gen', fullCategory: 'Machine Learning', description: 'Custom trained models for creative applications and interactive installations.', status: 'coming-soon' },
+            { symbol: 'Gn', name: 'Generative Art', category: 'ai-gen', fullCategory: 'Computational Art', description: 'Algorithmic and AI-assisted artwork exploring the boundaries of creativity.', status: 'coming-soon' },
+
+            // Art - 3 projects (GREEN)
+            { symbol: 'Va', name: 'Visual Art', category: 'art', fullCategory: 'Mixed Media', description: 'Curated collection of artistic works spanning multiple mediums and styles.', status: 'coming-soon' },
+            { symbol: 'Dg', name: 'Digital Art', category: 'art', fullCategory: 'Digital Media', description: 'Digital illustrations, 3D renders, and motion graphics.', status: 'coming-soon' },
+            { symbol: 'Sc', name: 'Sculpture', category: 'art', fullCategory: 'Physical Art', description: 'Three-dimensional works exploring form, material, and space.', status: 'coming-soon' },
+
+            // Writing - 3 projects (CORNFLOWER BLUE)
+            { symbol: 'Es', name: 'Essays', category: 'writing', fullCategory: 'Written Works', description: 'Essays and reflections on technology, design, and culture.', status: 'coming-soon' },
+            { symbol: 'Tw', name: 'Technical Writing', category: 'writing', fullCategory: 'Documentation', description: 'Technical documentation and guides for creative technology projects.', status: 'coming-soon' },
+            { symbol: 'Cr', name: 'Creative Writing', category: 'writing', fullCategory: 'Fiction & Poetry', description: 'Short stories, experimental narratives, and poetic works.', status: 'coming-soon' },
+        ];
+
+        const layout = [
+            ['Mb', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'Ai'],
+            ['Pp', 'Fc', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'Ml', 'Gn', 'Va', 'Dg', 'Es', 'Tw'],
+            ['Pd', 'Sb', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'Cf', 'Bg', 'Cc', 'Gb', 'Fp', 'Sx'],
+            ['Vp', 'Lr', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'Sc', 'empty', 'Cr'],
+        ];
+
+        const counts = { 'creative-tech': 0, 'ai-gen': 0, 'art': 0, 'writing': 0 };
+        projects.forEach(p => counts[p.category]++);
+
+        document.getElementById('count-creative-tech').textContent = counts['creative-tech'];
+        document.getElementById('count-ai-gen').textContent = counts['ai-gen'];
+        document.getElementById('count-art').textContent = counts['art'];
+        document.getElementById('count-writing').textContent = counts['writing'];
+
+        function generatePeriodicTable() {
+            const table = document.getElementById('periodic-table');
+            let atomicNumber = 1;
+
+            layout.forEach(row => {
+                row.forEach(symbol => {
+                    if (symbol === 'empty') {
+                        const empty = document.createElement('div');
+                        empty.className = 'element empty';
+                        table.appendChild(empty);
+                    } else {
+                        const project = projects.find(p => p.symbol === symbol);
+                        if (project) {
+                            const element = createElementCard(project, atomicNumber);
+                            table.appendChild(element);
+                            atomicNumber++;
+                        }
+                    }
+                });
+            });
+        }
+
+        function createElementCard(project, atomicNumber) {
+            const element = document.createElement('div');
+            element.className = `element ${project.category}`;
+            element.onclick = () => openModal(project, atomicNumber);
+
+            element.innerHTML = `
+                <div class="atomic-number">${atomicNumber}</div>
+                <div class="status-dot ${project.status}"></div>
+                <div class="element-symbol">${project.symbol}</div>
+                <div class="element-name">${project.name}</div>
+            `;
+
+            return element;
+        }
+
+        // Category click to toggle active state
+        document.querySelectorAll('.legend-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const wasActive = this.classList.contains('active');
+                const category = this.dataset.category;
+
+                // Remove active from all legend items
+                document.querySelectorAll('.legend-item').forEach(i => i.classList.remove('active'));
+
+                // Remove category-selected class from all elements
+                document.querySelectorAll('.element').forEach(el => el.classList.remove('category-selected'));
+
+                // Toggle this category
+                if (!wasActive) {
+                    this.classList.add('active');
+                    document.body.classList.add('category-active');
+
+                    // Add category-selected to matching elements
+                    document.querySelectorAll(`.element.${category}`).forEach(el => {
+                        el.classList.add('category-selected');
+                    });
+                } else {
+                    document.body.classList.remove('category-active');
+                }
+            });
+        });
+
+        function openModal(project, atomicNumber) {
+            // Clear active state when opening modal
+            document.querySelectorAll('.legend-item').forEach(i => i.classList.remove('active'));
+            document.body.classList.remove('category-active');
+            document.querySelectorAll('.element').forEach(el => el.classList.remove('category-selected'));
+
+            const modal = document.getElementById('modal');
+            modal.className = `modal active ${project.category}`;
+            document.getElementById('modal-number').textContent = `Element ${atomicNumber}`;
+            document.getElementById('modal-title').textContent = project.name;
+            document.getElementById('modal-category').textContent = project.fullCategory;
+            document.getElementById('modal-description').textContent = project.description;
+
+            const statusEl = document.getElementById('modal-status');
+            statusEl.textContent = project.status === 'completed' ? 'Available' : 'Coming Soon';
+            statusEl.className = `modal-status ${project.status}`;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        generatePeriodicTable();
+
+        // Click anywhere to deselect category
+        document.addEventListener('click', (e) => {
+            // Don't deselect if clicking on legend or elements
+            if (e.target.closest('.legend') || e.target.closest('.element')) {
+                return;
+            }
+
+            // Deselect category
+            document.querySelectorAll('.legend-item').forEach(i => i.classList.remove('active'));
+            document.body.classList.remove('category-active');
+            document.querySelectorAll('.element').forEach(el => el.classList.remove('category-selected'));
+        });
+    </script>
+</body>
+</html>

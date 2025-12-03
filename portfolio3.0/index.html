@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAL 3D Printing System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            width: 100vw !important;
+            height: 100vh !important;
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .info h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>Computed Axial Lithography</h1>
+        <p>Volumetric 3D Printing Technology</p>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+        scene.fog = new THREE.Fog(0x1a1a1a, 30, 60);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            powerPreference: 'high-performance'
+        });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.physicallyCorrectLights = true;
+
+        // Camera position - angled view like reference images
+        camera.position.set(-20, 12, 22);
+        camera.lookAt(0, 2, 0);
+
+        // Environment map for realistic reflections
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        // Create simple gradient environment
+        const envScene = new THREE.Scene();
+        envScene.background = new THREE.Color(0x1a1a1a);
+        const envCamera = new THREE.PerspectiveCamera();
+        const envRT = pmremGenerator.fromScene(envScene);
+        scene.environment = envRT.texture;
+
+        // Lighting setup with realistic intensities
+        const ambientLight = new THREE.AmbientLight(0x404040, 2.0);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        keyLight.position.set(-15, 20, 15);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 2048;
+        keyLight.shadow.mapSize.height = 2048;
+        keyLight.shadow.camera.left = -20;
+        keyLight.shadow.camera.right = 20;
+        keyLight.shadow.camera.top = 20;
+        keyLight.shadow.camera.bottom = -20;
+        keyLight.shadow.bias = -0.0001;
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4a9eff, 1.2);
+        fillLight.position.set(15, 10, -10);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        rimLight.position.set(0, 10, -20);
+        scene.add(rimLight);
+
+        // Add point light inside projector for realism
+        const projectorLight = new THREE.PointLight(0x4a9eff, 3.0, 20);
+        projectorLight.position.set(-10, 2, 0);
+        scene.add(projectorLight);
+
+        // Add volumetric spotlight for realistic light scattering
+        const volumetricSpotlight = new THREE.SpotLight(0x4a9eff, 5.0, 20, Math.PI / 8, 0.5, 2);
+        volumetricSpotlight.position.set(-10.5, 2, 0);
+        volumetricSpotlight.target.position.set(0, 2, 0);
+        scene.add(volumetricSpotlight);
+        scene.add(volumetricSpotlight.target);
+
+        // Base platform (brushed metal surface)
+        const basePlatform = new THREE.Mesh(
+            new THREE.BoxGeometry(50, 1, 25),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                metalness: 0.6,
+                roughness: 0.5,
+                envMapIntensity: 1.0
+            })
+        );
+        basePlatform.position.y = -0.5;
+        basePlatform.receiveShadow = true;
+        basePlatform.castShadow = true;
+        scene.add(basePlatform);
+
+        // Caustic light pattern mesh (simulates refraction on platform)
+        const causticGeometry = new THREE.PlaneGeometry(12, 8, 64, 64);
+        const causticMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const causticMesh = new THREE.Mesh(causticGeometry, causticMaterial);
+        causticMesh.rotation.x = -Math.PI / 2;
+        causticMesh.position.set(0, 0.02, 0);
+        scene.add(causticMesh);
+
+        // Store caustic vertex positions for animation
+        const causticPositions = causticGeometry.attributes.position.array;
+        const causticOriginalPositions = new Float32Array(causticPositions.length);
+        for (let i = 0; i < causticPositions.length; i++) {
+            causticOriginalPositions[i] = causticPositions[i];
+        }
+
+        // === DLP PROJECTOR (LEFT) ===
+        const projectorGroup = new THREE.Group();
+        projectorGroup.position.set(-15, 2, 0);
+
+        // Main projector body (white/light gray)
+        const projectorBody = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 4, 5),
+            new THREE.MeshStandardMaterial({
+                color: 0xd5d5d5,
+                metalness: 0.1,
+                roughness: 0.4
+            })
+        );
+        projectorBody.castShadow = true;
+        projectorBody.receiveShadow = true;
+        projectorGroup.add(projectorBody);
+
+        // Lens housing (black cylinder on front)
+        const lensHousing = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.2, 1.2, 1.5, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.8,
+                roughness: 0.3
+            })
+        );
+        lensHousing.rotation.z = Math.PI / 2;
+        lensHousing.position.set(3.5, 0, 0);
+        lensHousing.castShadow = true;
+        projectorGroup.add(lensHousing);
+
+        // Transparent lens glass (inside black rim)
+        const lensGlass = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.0, 1.0, 0.3, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                metalness: 0.0,
+                roughness: 0.1,
+                transparent: true,
+                opacity: 0.3
+            })
+        );
+        lensGlass.rotation.z = Math.PI / 2;
+        lensGlass.position.set(4.0, 0, 0);
+        projectorGroup.add(lensGlass);
+
+        // Store lens position for light beam origin
+        const lensWorldPosition = new THREE.Vector3(-15 + 4.0, 2, 0);
+
+        // Top ventilation grille
+        for (let i = 0; i < 8; i++) {
+            const vent = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.1, 4),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a })
+            );
+            vent.position.set(i * 0.6 - 2.1, 2.1, 0);
+            projectorGroup.add(vent);
+        }
+
+        // Feet
+        [-2, 2].forEach(z => {
+            const foot = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.35, 0.5, 8),
+                new THREE.MeshStandardMaterial({ color: 0x3a3a3a })
+            );
+            foot.position.set(-2, -2.5, z);
+            projectorGroup.add(foot);
+        });
+
+        scene.add(projectorGroup);
+
+        // === FOCUSING LENS (BETWEEN PROJECTOR AND TUB) ===
+        const focusingLensGroup = new THREE.Group();
+        focusingLensGroup.position.set(-9, 2, 0); // Between projector and tub
+
+        // Lens housing/mount (black rim)
+        const lensMount = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.2, 1.2, 0.2, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.85,
+                roughness: 0.25
+            })
+        );
+        lensMount.rotation.z = Math.PI / 2;
+        lensMount.castShadow = true;
+        focusingLensGroup.add(lensMount);
+
+        // Transparent lens glass element in center
+        const lensGlassMain = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.0, 1.0, 0.3, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                transparent: true,
+                opacity: 0.15, // More transparent
+                roughness: 0.1,
+                metalness: 0.0
+            })
+        );
+        lensGlassMain.rotation.z = Math.PI / 2;
+        focusingLensGroup.add(lensGlassMain);
+
+        // Support stand for lens - from floor to BOTTOM of lens rim
+        const lensSupportStand = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 1.15, 2, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                metalness: 0.7,
+                roughness: 0.4
+            })
+        );
+        lensSupportStand.position.set(0, -2.05, 0); // From floor (-4.05) to bottom of lens rim (-0.1)
+        lensSupportStand.castShadow = true;
+        focusingLensGroup.add(lensSupportStand);
+
+        // Top cap that blends into BOTTOM of lens rim
+       // const supportCap = new THREE.Mesh(
+      //      new THREE.CylinderGeometry(0.6, 0.2, -1.15, 16),
+        //    new THREE.MeshStandardMaterial({
+          //      color: 0x2a2a2a,
+            //    metalness: 0.7,
+              //  roughness: 0.4
+          //  })
+      //  );
+     //   supportCap.position.set(0, -0.075, 0); // Connects to BOTTOM of lens rim (y = -0.1 in lens coordinates)
+     //   supportCap.castShadow = true;
+    //    focusingLensGroup.add(supportCap);
+
+        scene.add(focusingLensGroup);
+
+        // === RECTANGULAR TRANSPARENT TUB (NO LID) ===
+        const tankGroup = new THREE.Group();
+        tankGroup.position.set(0, 2, 0); // Align with projector height
+
+        // Tub dimensions - rectangular box container
+        const tubWidth = 7;
+        const tubHeight = 4.5;
+        const tubDepth = 5.5;
+        const wallThickness = 0.15;
+
+        // Transparent acrylic material for tub - more visible
+        const tubMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.4,
+            roughness: 0.15,
+            metalness: 0.0,
+            side: THREE.DoubleSide,
+            thickness: 0.3,
+            transmission: 0.6,
+            ior: 1.49,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.05,
+            envMapIntensity: 1.2,
+            reflectivity: 0.5
+        });
+
+        // Bottom wall
+        const bottomWall = new THREE.Mesh(
+            new THREE.BoxGeometry(tubWidth, wallThickness, tubDepth),
+            tubMaterial
+        );
+        bottomWall.position.y = -tubHeight / 2;
+        bottomWall.castShadow = true;
+        bottomWall.receiveShadow = true;
+        tankGroup.add(bottomWall);
+
+        // Front wall
+        const frontWall = new THREE.Mesh(
+            new THREE.BoxGeometry(tubWidth, tubHeight, wallThickness),
+            tubMaterial
+        );
+        frontWall.position.z = tubDepth / 2;
+        frontWall.castShadow = true;
+        frontWall.receiveShadow = true;
+        tankGroup.add(frontWall);
+
+        // Back wall
+        const backWall = new THREE.Mesh(
+            new THREE.BoxGeometry(tubWidth, tubHeight, wallThickness),
+            tubMaterial
+        );
+        backWall.position.z = -tubDepth / 2;
+        backWall.castShadow = true;
+        backWall.receiveShadow = true;
+        tankGroup.add(backWall);
+
+        // Left wall (where light enters)
+        const leftWall = new THREE.Mesh(
+            new THREE.BoxGeometry(wallThickness, tubHeight, tubDepth),
+            tubMaterial
+        );
+        leftWall.position.x = -tubWidth / 2;
+        leftWall.castShadow = true;
+        leftWall.receiveShadow = true;
+        tankGroup.add(leftWall);
+
+        // Right wall
+        const rightWall = new THREE.Mesh(
+            new THREE.BoxGeometry(wallThickness, tubHeight, tubDepth),
+            tubMaterial
+        );
+        rightWall.position.x = tubWidth / 2;
+        rightWall.castShadow = true;
+        rightWall.receiveShadow = true;
+        tankGroup.add(rightWall);
+
+        // NO TOP LID - open top
+
+        // Index-matched fluid (blue-tinted liquid) with surface ripple capability
+        const fluidGeometry = new THREE.BoxGeometry(tubWidth - 0.4, tubHeight - 0.4, tubDepth - 0.4, 16, 16, 16);
+        const indexFluid = new THREE.Mesh(
+            fluidGeometry,
+            new THREE.MeshPhysicalMaterial({
+                color: 0xd0e8ff,
+                transparent: true,
+                opacity: 0.65, // Increased visibility
+                roughness: 0.05,
+                metalness: 0.0,
+                emissive: 0xaaddff,
+                emissiveIntensity: 0.15, // More emissive
+                transmission: 0.5, // Less transparent
+                thickness: 3.0,
+                ior: 1.49,
+                attenuationColor: new THREE.Color(0xb0d0ff),
+                attenuationDistance: 3.0,
+                envMapIntensity: 0.5,
+                depthWrite: false
+            })
+        );
+        indexFluid.position.y = -0.1;
+        indexFluid.renderOrder = 0; // Render before resin
+
+        // Store original positions for wave animation
+        const fluidPositions = fluidGeometry.attributes.position.array;
+        const fluidOriginalPositions = new Float32Array(fluidPositions.length);
+        for (let i = 0; i < fluidPositions.length; i++) {
+            fluidOriginalPositions[i] = fluidPositions[i];
+        }
+
+        tankGroup.add(indexFluid);
+
+        scene.add(tankGroup);
+
+        // === ROTATION MOTOR (TOP, SMALLER) ===
+        const rotationStageGroup = new THREE.Group();
+        rotationStageGroup.position.set(0, 6.5, 0); // Above tub
+
+        // Disc removed - mounting box will connect directly to shaft connector
+
+        // === UNIFIED MOTOR MOUNT ASSEMBLY (SINGLE CONTINUOUS PIPE) ===
+
+        // Single unified material
+        const mountMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2c2c2c,
+            metalness: 0.85,
+            roughness: 0.3
+        });
+
+        const motorAssemblyGroup = new THREE.Group();
+
+        // Continuous pipe - rigid overhead gantry structure
+        const pipePath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(9.0, -3.3, 0),   // Start at base
+            new THREE.Vector3(9.0, -2.0, 0),   // Rise from floor
+            new THREE.Vector3(9.0, 0.0, 0),    // Continue vertical
+            new THREE.Vector3(9.0, 1.5, 0),    // Top of vertical (reduced height)
+            new THREE.Vector3(8.5, 2.0, 0),    // Start corner
+            new THREE.Vector3(7.5, 2.4, 0),    // Corner transition
+            new THREE.Vector3(5.0, 2.4, 0),    // Overhead horizontal
+            new THREE.Vector3(2.0, 2.4, 0),    // Continue overhead
+            new THREE.Vector3(0.8, 2.0, 0),    // Start descent corner
+            new THREE.Vector3(0.3, 1.5, 0),    // Curve down
+            new THREE.Vector3(0, 0.8, 0),      // Down to stage
+            new THREE.Vector3(0, 0.35, 0)      // Connect to top of mounting box
+        ], false, 'catmullrom', 0.3);
+
+        // Create single continuous tube
+        const pipeGeometry = new THREE.TubeGeometry(pipePath, 100, 0.5, 20, false);
+        const continuousPipe = new THREE.Mesh(pipeGeometry, mountMaterial);
+        continuousPipe.castShadow = true;
+        motorAssemblyGroup.add(continuousPipe);
+
+        // Mounting box - extended by disc height only (replaces disc)
+        const mountBox = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, 1.7, 2.4), // 1.2 + 0.5 (disc height)
+            mountMaterial
+        );
+        mountBox.position.set(0, 0.35, 0); // Positioned to replace disc
+        mountBox.castShadow = true;
+        motorAssemblyGroup.add(mountBox);
+
+        // Realistic floor mounting base - heavy plate for stability
+        const baseGroup = new THREE.Group();
+        baseGroup.position.set(9.0, -6.25, 0);
+
+        // Main base plate - wide and heavy looking
+        const basePlate = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.8, 2.0, 0.3, 32),
+            mountMaterial
+        );
+        basePlate.castShadow = true;
+        baseGroup.add(basePlate);
+
+        // Reversed cone transition - pipe embedded into base (cast-in-place look)
+        const baseTransition = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.9, 0.8, 32),
+            mountMaterial
+        );
+        baseTransition.position.y = 0.55;
+        baseTransition.castShadow = true;
+        baseGroup.add(baseTransition);
+
+        // Connecting sleeve between transition and main tube
+        const baseSleeve = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 2.2, 32),
+            mountMaterial
+        );
+        baseSleeve.position.y = 2.05;
+        baseSleeve.castShadow = true;
+        baseGroup.add(baseSleeve);
+
+        // Bolt holes detail on base plate
+        const boltHoleGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16);
+        const boltMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            metalness: 0.9,
+            roughness: 0.2
+        });
+
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+            const boltHole = new THREE.Mesh(boltHoleGeometry, boltMaterial);
+            boltHole.position.x = Math.cos(angle) * 1.5;
+            boltHole.position.z = Math.sin(angle) * 1.5;
+            boltHole.position.y = -0.1;
+            boltHole.castShadow = true;
+            baseGroup.add(boltHole);
+        }
+
+        // Industrial toggle switch - enhanced detail (back at original Z position)
+        // Beveled metal mounting plate (brushed aluminum with chamfered edges)
+        const plateBevel = 0.03;
+        const plateWidth = 0.5;
+        const plateDepth = 0.4;
+        const plateHeight = 0.05;
+
+        // Create chamfered plate using multiple layers
+        const switchPlateMain = new THREE.Mesh(
+            new THREE.BoxGeometry(plateWidth - plateBevel * 2, plateHeight, plateDepth - plateBevel * 2),
+            new THREE.MeshStandardMaterial({
+                color: 0xd5d5d5,
+                metalness: 0.88,
+                roughness: 0.32
+            })
+        );
+        switchPlateMain.position.set(0, 0.15, 1.325);
+        switchPlateMain.castShadow = true;
+        baseGroup.add(switchPlateMain);
+
+        // Chamfer edges
+        const chamferMat = new THREE.MeshStandardMaterial({
+            color: 0xc8c8c8,
+            metalness: 0.85,
+            roughness: 0.38
+        });
+
+        const topChamfer = new THREE.Mesh(
+            new THREE.BoxGeometry(plateWidth - plateBevel, plateHeight - 0.02, plateBevel),
+            chamferMat
+        );
+        topChamfer.position.set(0, 0.15, 1.325 + (plateDepth - plateBevel) / 2);
+        baseGroup.add(topChamfer);
+
+        const bottomChamfer = new THREE.Mesh(
+            new THREE.BoxGeometry(plateWidth - plateBevel, plateHeight - 0.02, plateBevel),
+            chamferMat
+        );
+        bottomChamfer.position.set(0, 0.15, 1.325 - (plateDepth - plateBevel) / 2);
+        baseGroup.add(bottomChamfer);
+
+        // Phillips head screws with detailed geometry
+        for (let i = 0; i < 4; i++) {
+            const offsetX = (i % 2 === 0) ? -0.16 : 0.16;
+            const offsetZ = (i < 2) ? -0.13 : 0.13;
+
+            // Screw head
+            const screwHead = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.035, 0.04, 0.03, 20),
+                new THREE.MeshStandardMaterial({
+                    color: 0x383838,
+                    metalness: 0.85,
+                    roughness: 0.35
+                })
+            );
+            screwHead.position.set(offsetX, 0.165, 1.325 + offsetZ);
+            screwHead.castShadow = true;
+            baseGroup.add(screwHead);
+
+            // Phillips cross indents
+            const indent1 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.01, 0.06),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.8 })
+            );
+            indent1.position.set(offsetX, 0.175, 1.325 + offsetZ);
+            baseGroup.add(indent1);
+
+            const indent2 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, 0.01, 0.02),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.8 })
+            );
+            indent2.position.set(offsetX, 0.175, 1.325 + offsetZ);
+            baseGroup.add(indent2);
+        }
+
+        // Multi-layered switch housing with detail
+        const housingBase = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.18, 0.3),
+            new THREE.MeshStandardMaterial({
+                color: 0x0d0d0d,
+                metalness: 0.55,
+                roughness: 0.6
+            })
+        );
+        housingBase.position.set(0, 0.15, 1.325);
+        housingBase.castShadow = true;
+        baseGroup.add(housingBase);
+
+        // Housing rim detail
+        const housingRim = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 0.04, 0.32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.65,
+                roughness: 0.45
+            })
+        );
+        housingRim.position.set(0, 0.21, 1.325);
+        baseGroup.add(housingRim);
+
+        // Detailed hexagonal bushing with threading
+        const bushingHex = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.15, 0.12, 6),
+            new THREE.MeshStandardMaterial({
+                color: 0xb0b0b0,
+                metalness: 0.94,
+                roughness: 0.15
+            })
+        );
+        bushingHex.position.set(0, 0.27, 1.325);
+        bushingHex.castShadow = true;
+        baseGroup.add(bushingHex);
+
+        // Threading rings on bushing
+        for (let i = 0; i < 3; i++) {
+            const threadRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.13, 0.01, 8, 24),
+                new THREE.MeshStandardMaterial({
+                    color: 0x909090,
+                    metalness: 0.9,
+                    roughness: 0.25
+                })
+            );
+            threadRing.rotation.x = Math.PI / 2;
+            threadRing.position.set(0, 0.24 + i * 0.03, 1.325);
+            baseGroup.add(threadRing);
+        }
+
+        // Split lock washer with gap detail
+        const washerOuter = new THREE.Mesh(
+            new THREE.TorusGeometry(0.17, 0.015, 12, 32, Math.PI * 1.9),
+            new THREE.MeshStandardMaterial({
+                color: 0x959595,
+                metalness: 0.92,
+                roughness: 0.22
+            })
+        );
+        washerOuter.rotation.x = Math.PI / 2;
+        washerOuter.position.set(0, 0.34, 1.325);
+        baseGroup.add(washerOuter);
+
+        // Toggle lever with detailed geometry
+        const leverAngle = Math.PI / 5.5;
+
+        // Lever base (thicker)
+        const leverBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.045, 0.04, 0.1, 20),
+            new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                metalness: 0.97,
+                roughness: 0.06
+            })
+        );
+        leverBase.position.set(0, 0.39, 1.325);
+        leverBase.castShadow = true;
+        baseGroup.add(leverBase);
+
+        // Lever shaft (tapered)
+        const leverShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.035, 0.04, 0.35, 18),
+            new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                metalness: 0.98,
+                roughness: 0.07
+            })
+        );
+        leverShaft.position.set(0, 0.59, 1.325);
+        leverShaft.rotation.z = leverAngle;
+        leverShaft.castShadow = true;
+        baseGroup.add(leverShaft);
+
+        // Knurled ball grip with detail pattern
+        const leverLength = 0.35 / 2;
+        const ballOffsetY = Math.cos(leverAngle) * leverLength;
+        const ballOffsetZ = Math.sin(leverAngle) * leverLength;
+
+        const ballGrip = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 24, 24),
+            new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                metalness: 0.97,
+                roughness: 0.12
+            })
+        );
+        ballGrip.position.set(0, 0.59 + ballOffsetY, 1.325 + ballOffsetZ);
+        ballGrip.castShadow = true;
+        baseGroup.add(ballGrip);
+
+        // Knurling detail rings on ball
+        for (let i = 0; i < 3; i++) {
+            const knurlRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.065 - i * 0.015, 0.005, 8, 20),
+                new THREE.MeshStandardMaterial({
+                    color: 0xd0d0d0,
+                    metalness: 0.95,
+                    roughness: 0.25
+                })
+            );
+            knurlRing.position.set(0, 0.59 + ballOffsetY, 1.325 + ballOffsetZ);
+            knurlRing.rotation.z = leverAngle;
+            baseGroup.add(knurlRing);
+        }
+
+        // Embossed label plates with raised text effect
+        // Red "NO" label
+        const labelNo = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2, 0.02, 0.12),
+            new THREE.MeshStandardMaterial({
+                color: 0xcc2222,
+                metalness: 0.12,
+                roughness: 0.78
+            })
+        );
+        labelNo.position.set(0, 0.15, 1.49);
+        baseGroup.add(labelNo);
+
+        // Raised "NO" text
+        const textNoRaised = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.008, 0.06),
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.0,
+                roughness: 0.95
+            })
+        );
+        textNoRaised.position.set(0, 0.164, 1.49);
+        baseGroup.add(textNoRaised);
+
+        // Black "OFF" label
+        const labelOff = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2, 0.02, 0.12),
+            new THREE.MeshStandardMaterial({
+                color: 0x0a0a0a,
+                metalness: 0.18,
+                roughness: 0.75
+            })
+        );
+        labelOff.position.set(0, 0.15, 1.16);
+        baseGroup.add(labelOff);
+
+        // Raised "OFF" text
+        const textOffRaised = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.008, 0.06),
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.0,
+                roughness: 0.95
+            })
+        );
+        textOffRaised.position.set(0, 0.164, 1.16);
+        baseGroup.add(textOffRaised);
+
+        motorAssemblyGroup.add(baseGroup);
+
+        rotationStageGroup.add(motorAssemblyGroup);
+
+        scene.add(rotationStageGroup);
+
+        // === CYLINDRICAL BOTTLE (SPINNING ON SHAFT) ===
+        const bottleGroup = new THREE.Group();
+        bottleGroup.position.set(0, 3.1, 0); // Center in the tub
+
+        const bottleRadius = 1;
+        const bottleHeight = 4;
+
+        // Glass bottle walls - ALWAYS VISIBLE (renders independently)
+        const bottleMaterial = new THREE.MeshStandardMaterial({
+            color: 0x99ddff,
+            transparent: 0.5,
+            opacity: 0.3,
+            roughness: 0.15,
+            metalness: 0.0,
+            emissive: 0xaaffff,
+            emissiveIntensity: 0.2,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const bottleWall = new THREE.Mesh(
+            new THREE.CylinderGeometry(bottleRadius, bottleRadius, bottleHeight, 64, 1, true),
+            bottleMaterial
+        );
+        bottleWall.renderOrder = 999;
+        bottleWall.castShadow = true;
+        bottleWall.receiveShadow = false;
+        bottleGroup.add(bottleWall);
+
+        // Bottom cap (thick glass)
+        const bottleBottom = new THREE.Mesh(
+            new THREE.CylinderGeometry(bottleRadius, bottleRadius, 0.2, 64),
+            bottleMaterial.clone()
+        );
+        bottleBottom.material.opacity = 0.75;
+        bottleBottom.position.y = -bottleHeight / 2 - 0.1;
+        bottleBottom.renderOrder = 999;
+        bottleBottom.castShadow = true;
+        bottleBottom.receiveShadow = false;
+        bottleGroup.add(bottleBottom);
+
+        // Add invisible edge outline to bottle (for depth separation only)
+        const bottleEdges = new THREE.EdgesGeometry(new THREE.CylinderGeometry(bottleRadius, bottleRadius, bottleHeight, 64));
+        const bottleOutline = new THREE.LineSegments(
+            bottleEdges,
+            new THREE.LineBasicMaterial({
+                color: 0x66ffff,
+                transparent: true,
+                opacity: 0,
+                linewidth: 3,
+                depthTest: false
+            })
+        );
+        bottleOutline.renderOrder = 1000;
+        bottleGroup.add(bottleOutline);
+
+        // Top cap/lid (black metal) - seals the bottle
+        const topCap = new THREE.Mesh(
+            new THREE.CylinderGeometry(bottleRadius + 0.1, bottleRadius + 0.1, 0.3, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.8,
+                roughness: 0.3
+            })
+        );
+        topCap.position.y = bottleHeight / 2 + 0.15;
+        topCap.castShadow = true;
+        bottleGroup.add(topCap);
+
+        // Threaded attachment piece (connects cap to shaft)
+        const threadedAttachment = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.5, 0.8, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                metalness: 0.85,
+                roughness: 0.25
+            })
+        );
+        threadedAttachment.position.y = bottleHeight / 2 + 0.6;
+        threadedAttachment.castShadow = true;
+        bottleGroup.add(threadedAttachment);
+
+        // Black shaft connector extending upward
+        const shaftConnector = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.2, 1.5, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.9,
+                roughness: 0.2
+            })
+        );
+        shaftConnector.position.y = bottleHeight / 2 + 1.7;
+        shaftConnector.castShadow = true;
+        bottleGroup.add(shaftConnector);
+
+        scene.add(bottleGroup);
+
+        // === PHOTOCURABLE RESIN LIQUID (BRIGHT YELLOW INSIDE BOTTLE) ===
+        const resinGroup = new THREE.Group();
+        resinGroup.position.set(0, 2.9, 0); // Match bottle position
+
+        // Transparent photopolymer resin material - distinct from index fluid
+        const resinGeometry = new THREE.CylinderGeometry(bottleRadius - 0.12, bottleRadius - 0.12, bottleHeight - 0.4, 64, 1);
+        const resinLiquid = new THREE.Mesh(
+            resinGeometry,
+            new THREE.MeshStandardMaterial({
+                color: 0xffdb58, // Light yellow-orange resin
+                transparent: 0,
+                opacity: 0.35, // Very transparent
+                roughness: 0.2,
+                metalness: 0.0,
+                depthWrite: false
+            })
+        );
+        resinLiquid.renderOrder = 1;
+        resinLiquid.castShadow = false;
+        resinLiquid.receiveShadow = true;
+
+        resinGroup.add(resinLiquid);
+
+        scene.add(resinGroup);
+
+        // === LIGHT BEAM: FOCUSED CONE FROM PROJECTOR TO BOTTLE ===
+        const projectorLensX = -15 + 4.5; // Projector lens exit point
+        const vialCenterX = 0; // Vial center (focal point) - centered in tub
+
+        // Single cone-shaped beam from projector lens to focal point
+        const beamLength = vialCenterX - projectorLensX;
+        const beamCenterX = (projectorLensX + vialCenterX) / 2;
+        const beamStartRadius = 1.0; // Wide at projector
+        const beamEndRadius = 0.15; // Narrow at focal point
+
+        const focusedBeam = new THREE.Mesh(
+            new THREE.CylinderGeometry(beamEndRadius, beamStartRadius, Math.abs(beamLength), 32, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: 0x000080,
+                transparent: 0.15,
+                opacity: 0.55,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            })
+        );
+        focusedBeam.rotation.z = -Math.PI / 2;
+        focusedBeam.position.set(beamCenterX, 2, 0);
+        scene.add(focusedBeam);
+
+        // Beam stops at focal point (center of bottle) - no diverging beam beyond
+
+        // Inner core beams for brightness
+      //  const straightCore = new THREE.Mesh(
+        //    new THREE.CylinderGeometry(straightBeamRadius * 0.6, straightBeamRadius * 0.6, Math.abs(straightBeamLength), 32, 1, true),
+          //  new THREE.MeshBasicMaterial({
+            //    color: 0x88ccff,
+              //  transparent: 0.3,
+            //    opacity: 0.5,
+              //  side: THREE.DoubleSide,
+                //blending: THREE.AdditiveBlending,
+               // depthWrite: false
+           // })
+       // );
+       // straightCore.rotation.z = Math.PI / 2;
+       // straightCore.position.set(straightBeamCenterX, 2, 0);
+       // scene.add(straightCore);
+
+       // const focusedCore = new THREE.Mesh(
+         //   new THREE.CylinderGeometry(0.1, straightBeamRadius * 0.6, Math.abs(coneBeamLength), 32, 1, true),
+           // new THREE.MeshBasicMaterial({
+             //   color: 0x88ccff,
+               // transparent: 0.3,
+         //       opacity: 0.5,
+           //     side: THREE.DoubleSide,
+             //   blending: THREE.AdditiveBlending,
+               // depthWrite: false
+         //   })
+       // );
+       // focusedCore.rotation.z = -Math.PI / 2;
+       // focusedCore.position.set(coneBeamCenterX, 2, 0);
+       // scene.add(focusedCore);
+
+        // Volumetric glow particles in beam (optimized count)
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 150;
+        const positions = new Float32Array(particleCount * 3);
+
+        const beamStart = -15 + 4.5;
+        const beamEnd = 0;
+
+        for (let i = 0; i < particleCount; i++) {
+            const t = Math.random();
+            const x = beamStart + t * (beamEnd - beamStart);
+            const angle = Math.random() * Math.PI * 2;
+
+            // Calculate proper radius based on position in cone beam
+            const coneProgress = (x - beamEnd) / (beamStart - beamEnd);
+            const maxRadius = beamEndRadius + coneProgress * (beamStartRadius - beamEndRadius);
+
+            const spreadRadius = maxRadius * Math.random() * 0.9; // Stay well within bounds
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = 2 + Math.cos(angle) * spreadRadius;
+            positions[i * 3 + 2] = Math.sin(angle) * spreadRadius;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x4a9eff,
+            size: 0.12,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // === FORMING TORUS KNOT (VOLUMETRIC OBJECT BEING PRINTED AT FOCAL POINT) ===
+        const torusMesh = new THREE.Mesh(
+            new THREE.TorusKnotGeometry(0.35, 0.12, 80, 16), // Complex torus knot shape
+            new THREE.MeshStandardMaterial({
+                color: 0xffaa00, // Bright solidified resin color (amber/yellow)
+                transparent: false, // Fully opaque
+                roughness: 0.4,
+                metalness: 0.1,
+                emissive: 0xff6600,
+                emissiveIntensity: 0.4
+            })
+        );
+        torusMesh.position.set(0, 2, 0); // At focal point (beam height)
+        torusMesh.castShadow = true;
+        torusMesh.receiveShadow = true;
+        scene.add(torusMesh);
+
+        // No projection patterns - just transparent resin cylinder
+
+        // Forming object removed - only torus rotates
+
+        // No focal point sphere - just torus forming
+
+        // Animation
+        let time = 0;
+        let buildProgress = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.016;
+            buildProgress = Math.min(1, buildProgress + 0.002);
+
+            // Rotate bottle, resin, and torus knot together
+            bottleGroup.rotation.y += 0.015;
+            resinGroup.rotation.y += 0.015; // Resin rotates with bottle
+            torusMesh.rotation.y += 0.015; // Torus knot rotates on vertical axis only
+
+            // Resin stays static and transparent
+
+            // Animate index fluid with TUB-BOUNDED rotation-induced flow
+            const tubWidth = 7;
+            const tubDepth = 5.5;
+            const tubHeight = 4.5;
+            const maxTubX = tubWidth / 2 - 0.15;  // Leave margin for walls
+            const maxTubZ = tubDepth / 2 - 0.15;
+            const maxTubY = tubHeight / 2 - 0.15;
+
+            for (let i = 0; i < fluidPositions.length; i += 3) {
+                const x = fluidOriginalPositions[i];
+                const y = fluidOriginalPositions[i + 1];
+                const z = fluidOriginalPositions[i + 2];
+
+                const radius = Math.sqrt(x * x + z * z);
+                const angle = Math.atan2(z, x);
+
+                // Rotation creates vortex patterns around the bottle
+                const vortexStrength = 0.025;
+                const spiralX = Math.sin(angle + bottleGroup.rotation.y * 3) * vortexStrength * radius;
+                const spiralZ = Math.cos(angle + bottleGroup.rotation.y * 3) * vortexStrength * radius;
+
+                // Convection currents from rotation
+                const wave1 = Math.sin(x * 0.5 + time * 0.5) * 0.012;
+                const wave2 = Math.cos(z * 0.5 + time * 0.3) * 0.012;
+
+                // Surface ripples
+                const surfaceWave = (Math.abs(y - maxTubY) < 0.1) ?
+                    Math.sin(x * 0.8 + z * 0.8 + time * 2) * 0.015 : 0;
+
+                let newX = x + wave1 + spiralX;
+                let newZ = z + wave2 + spiralZ;
+                let newY = y + surfaceWave;
+
+                // HARD CONSTRAINT: Keep within rectangular tub boundaries
+                newX = Math.max(-maxTubX, Math.min(maxTubX, newX));
+                newZ = Math.max(-maxTubZ, Math.min(maxTubZ, newZ));
+                newY = Math.max(-maxTubY, Math.min(maxTubY, newY));
+
+                fluidPositions[i] = newX;
+                fluidPositions[i + 1] = newY;
+                fluidPositions[i + 2] = newZ;
+            }
+            fluidGeometry.attributes.position.needsUpdate = true;
+
+            // Animate caustic light patterns (light refraction through liquids)
+            let maxCausticHeight = 0;
+            for (let i = 0; i < causticPositions.length; i += 3) {
+                const x = causticOriginalPositions[i];
+                const y = causticOriginalPositions[i + 1];
+
+                // Create interference pattern from light through liquids
+                const dist = Math.sqrt(x * x + y * y);
+                const caustic1 = Math.sin(dist * 1.5 - time * 3) * 0.5;
+                const caustic2 = Math.cos(x * 0.8 + y * 1.2 + time * 2) * 0.3;
+                const caustic3 = Math.sin((x + y) * 0.5 + time * 1.5) * 0.2;
+
+                const height = (caustic1 + caustic2 + caustic3) * 0.15;
+                causticPositions[i + 2] = height;
+                maxCausticHeight = Math.max(maxCausticHeight, Math.abs(height));
+            }
+            causticGeometry.attributes.position.needsUpdate = true;
+
+            // Vary caustic opacity based on build progress and intensity
+            causticMaterial.opacity = buildProgress * 0.3 * (0.7 + Math.sin(time * 2) * 0.3);
+
+            // Pulsing light beam
+            focusedBeam.material.opacity = 0.35 + Math.sin(time * 2) * 0.15;
+           // straightCore.material.opacity = 0.5 + Math.sin(time * 2) * 0.2;
+           // focusedCore.material.opacity = 0.5 + Math.sin(time * 2) * 0.2;
+
+            // No projection patterns - removed
+
+            // Only torus rotates - formingObject removed
+
+            // Torus particles are always visible (for now - you can adjust later)
+            // In a real CAL system, the object forms volumetrically as light accumulates
+
+            // Particle animation - flowing from projector to vial with turbulence
+            const positions = particles.geometry.attributes.position.array;
+            const beamStart = -15 + 4.5;
+            const beamEnd = 0;
+
+            for (let i = 0; i < particleCount; i++) {
+                const currentX = positions[i * 3];
+                const currentY = positions[i * 3 + 1];
+                const currentZ = positions[i * 3 + 2];
+
+                // Calculate max radius at current X position in cone beam
+                const coneProgress = (currentX - beamEnd) / (beamStart - beamEnd);
+                const maxRadius = beamEndRadius + coneProgress * (beamStartRadius - beamEndRadius);
+
+                // Forward motion
+                const progress = (currentX - beamStart) / (beamEnd - beamStart);
+                const speed = 0.05;
+
+                positions[i * 3] += speed;
+
+                // Constrain particles BEFORE adding turbulence
+                const dy = positions[i * 3 + 1] - 2; // Distance from beam center Y
+                const dz = positions[i * 3 + 2] - 0; // Distance from beam center Z
+                let distFromCenter = Math.sqrt(dy * dy + dz * dz);
+
+                // Add turbulence only if within beam
+                if (distFromCenter < maxRadius * 0.7) {
+                    const turbulence = Math.sin(time * 3 + i * 0.5) * 0.003;
+                    positions[i * 3 + 1] += turbulence;
+                    positions[i * 3 + 2] += Math.cos(time * 2.5 + i * 0.3) * 0.003;
+                }
+
+                // Recalculate distance after turbulence
+                const dyNew = positions[i * 3 + 1] - 2;
+                const dzNew = positions[i * 3 + 2] - 0;
+                distFromCenter = Math.sqrt(dyNew * dyNew + dzNew * dzNew);
+
+                // HARD constraint - keep particles strictly inside
+                if (distFromCenter > maxRadius * 0.8) {
+                    const scale = maxRadius * 0.75 / distFromCenter;
+                    positions[i * 3 + 1] = 2 + dyNew * scale;
+                    positions[i * 3 + 2] = 0 + dzNew * scale;
+                }
+
+                // When particle reaches focal point, it contributes to forming object
+                if (positions[i * 3] > -0.5) {
+                    // Near focal point - particle is "depositing" material
+                    // Slow down as it approaches the object
+                    const distToFocalPoint = Math.abs(positions[i * 3]);
+                    if (distToFocalPoint < 1.5) {
+                        // Particles get attracted to forming object surface
+                        const pullStrength = (1.5 - distToFocalPoint) / 1.5;
+                        positions[i * 3] -= speed * pullStrength * 0.3; // Slow down
+                    }
+                }
+
+                // Reset particle when it reaches the end
+                if (positions[i * 3] > beamEnd + 0.5) {
+                    positions[i * 3] = beamStart;
+                    const angle = Math.random() * Math.PI * 2;
+
+                    // Initialize within proper beam radius at projector
+                    const spreadRadius = beamStartRadius * Math.random() * 0.85;
+                    positions[i * 3 + 1] = 2 + Math.cos(angle) * spreadRadius;
+                    positions[i * 3 + 2] = Math.sin(angle) * spreadRadius;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            // No focal point sphere - removed
+
+            // Gentle camera orbit
+            const orbitRadius = 20;
+            const orbitSpeed = 0.05;
+            camera.position.x = Math.cos(time * orbitSpeed) * orbitRadius;
+            camera.position.z = Math.sin(time * orbitSpeed) * orbitRadius;
+            camera.position.y = 8 + Math.sin(time * 0.3) * 2;
+            camera.lookAt(0, 3.1, 0); // Look at bottle center/focal point
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

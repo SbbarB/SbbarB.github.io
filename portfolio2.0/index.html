@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brett Rabbs - Creative Technologist Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        #cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #888;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transition: all 0.1s ease;
+            mix-blend-mode: difference;
+        }
+
+        #cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: all 0.15s ease;
+        }
+
+        /* Canvas for background effects */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 100;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 200;
+            letter-spacing: 0.2em;
+            color: #f0f0f0;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            letter-spacing: 0.3em;
+            font-weight: 300;
+        }
+
+        /* Navigation */
+        nav {
+            position: relative;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        nav button {
+            background: none;
+            border: 2px solid #444;
+            color: #aaa;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            letter-spacing: 0.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        nav button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        nav button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        nav button:hover {
+            border-color: #888;
+            color: #f0f0f0;
+        }
+
+        nav button.active {
+            border-color: #f0f0f0;
+            color: #f0f0f0;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Main Container */
+        #portfolio-container {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            padding: 2rem;
+            z-index: 1;
+        }
+
+        /* Section Container */
+        .section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Project Grid */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Project Card */
+        .project-card {
+            position: relative;
+            background: rgba(40, 40, 40, 0.6);
+            border: 1px solid rgba(100, 100, 100, 0.3);
+            border-radius: 20px;
+            padding: 2rem;
+            min-height: 300px;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            border-radius: 20px;
+        }
+
+        .project-card:hover::before {
+            opacity: 1;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: rgba(200, 200, 200, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Chromatic aberration effect on hover */
+        .project-card::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg,
+                rgba(255, 0, 0, 0.1),
+                rgba(0, 255, 0, 0.1),
+                rgba(0, 0, 255, 0.1));
+            opacity: 0;
+            filter: blur(10px);
+            transition: opacity 0.3s ease;
+            z-index: -1;
+            border-radius: 20px;
+        }
+
+        .project-card:hover::after {
+            opacity: 0.3;
+        }
+
+        .project-title {
+            font-size: 1.8rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            color: #f0f0f0;
+            letter-spacing: 0.05em;
+        }
+
+        .project-category {
+            font-size: 0.9rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 1rem;
+        }
+
+        .project-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #aaa;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-status {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            background: rgba(100, 100, 100, 0.3);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #999;
+            letter-spacing: 0.1em;
+        }
+
+        .project-status.coming-soon {
+            background: rgba(100, 100, 150, 0.3);
+            color: #aaf;
+        }
+
+        /* Placeholder image area */
+        .project-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(60, 60, 60, 0.5) 0%, rgba(40, 40, 40, 0.5) 100%);
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+        }
+
+        /* SVG Container for constellation lines */
+        #constellation-svg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .constellation-line {
+            stroke: rgba(150, 150, 150, 0.2);
+            stroke-width: 1;
+            fill: none;
+            stroke-dasharray: 5, 5;
+            animation: dash 20s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -200;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .project-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+    <div id="cursor-trail"></div>
+
+    <!-- Background Canvas for particle effects -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Constellation SVG -->
+    <svg id="constellation-svg"></svg>
+
+    <header>
+        <h1>Brett Rabbs</h1>
+        <p class="subtitle">Creative Technologist</p>
+    </header>
+
+    <nav>
+        <button class="nav-btn active" data-section="creative-tech">Creative Technology</button>
+        <button class="nav-btn" data-section="art">Art</button>
+        <button class="nav-btn" data-section="writing">Writing</button>
+    </nav>
+
+    <div id="portfolio-container">
+        <!-- Creative Technology Section -->
+        <section id="creative-tech" class="section active">
+            <div class="project-grid" id="tech-grid">
+                <!-- Projects will be generated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Art Section -->
+        <section id="art" class="section">
+            <div class="project-grid" id="art-grid">
+                <!-- Art projects will be added here -->
+            </div>
+        </section>
+
+        <!-- Writing Section -->
+        <section id="writing" class="section">
+            <div class="project-grid" id="writing-grid">
+                <!-- Writing projects will be added here -->
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Project Data
+        const projects = {
+            creativeTech: [
+                {
+                    title: 'Mailbox',
+                    category: 'IDC2 - Physical Object',
+                    description: 'Interactive design for communication. A reimagined approach to physical mail interaction.',
+                    status: 'completed'
+                },
+                {
+                    title: 'PillPal',
+                    category: 'Healthcare Design',
+                    description: 'Smart medication management system. Helping users stay on track with their health routines.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Wearable Focus Clapper',
+                    category: 'Wearable Technology',
+                    description: 'Haptic feedback device for attention and focus enhancement through rhythmic patterns.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Posture Detector',
+                    category: 'Computer Vision',
+                    description: 'Real-time posture analysis system using machine learning to promote better ergonomics.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Soft Button',
+                    category: 'Physical Computing',
+                    description: 'Experimental soft robotics interface exploring tactile interaction design.',
+                    status: 'completed'
+                },
+                {
+                    title: 'CompFab Final',
+                    category: 'Digital Fabrication',
+                    description: 'Computational fabrication project exploring parametric design and manufacturing.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Backgammon Box',
+                    category: 'Product Design',
+                    description: 'Custom-designed travel backgammon set with integrated storage solutions.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Clueless Closet',
+                    category: 'Interactive Installation',
+                    description: 'AI-powered wardrobe assistant helping users organize and style their clothing.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Grav Bat & Alternator',
+                    category: 'Energy Systems',
+                    description: 'Innovative gravity-powered energy generation system. Featured in news coverage.',
+                    status: 'completed',
+                    highlight: true
+                },
+                {
+                    title: 'Freshman Projects',
+                    category: 'Early Work Collection',
+                    description: 'A collection of foundational projects from first-year explorations in design and technology.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Sound Experiments',
+                    category: 'Audio Design',
+                    description: 'Interactive sound installations and audio visualization projects.',
+                    status: 'completed'
+                },
+                {
+                    title: 'Volumetric Printer',
+                    category: '3D Printing Innovation',
+                    description: 'Next-generation volumetric 3D printing technology research and development.',
+                    status: 'coming-soon'
+                },
+                {
+                    title: 'Lego Racecar',
+                    category: 'Robotics & Automation',
+                    description: 'Autonomous racing vehicle project with Dr. Liz. Advanced sensor integration and control systems.',
+                    status: 'coming-soon'
+                }
+            ],
+            art: [
+                {
+                    title: 'Art Collection',
+                    category: 'Visual Art',
+                    description: 'Curated collection of artistic works spanning multiple mediums and styles.',
+                    status: 'coming-soon'
+                }
+            ],
+            writing: [
+                {
+                    title: 'Writing Portfolio',
+                    category: 'Written Works',
+                    description: 'Essays, technical writing, and creative pieces exploring technology, design, and culture.',
+                    status: 'coming-soon'
+                }
+            ]
+        };
+
+        // Generate project cards
+        function createProjectCard(project) {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            if (project.highlight) {
+                card.style.borderColor = 'rgba(200, 200, 255, 0.4)';
+            }
+
+            card.innerHTML = `
+                <div class="project-image">IMAGE PLACEHOLDER</div>
+                <div class="project-category">${project.category}</div>
+                <h3 class="project-title">${project.title}</h3>
+                <p class="project-description">${project.description}</p>
+                <span class="project-status ${project.status === 'coming-soon' ? 'coming-soon' : ''}">${project.status === 'coming-soon' ? 'Coming Soon' : 'View Project'}</span>
+            `;
+
+            return card;
+        }
+
+        // Populate sections
+        const techGrid = document.getElementById('tech-grid');
+        projects.creativeTech.forEach(project => {
+            techGrid.appendChild(createProjectCard(project));
+        });
+
+        const artGrid = document.getElementById('art-grid');
+        projects.art.forEach(project => {
+            artGrid.appendChild(createProjectCard(project));
+        });
+
+        const writingGrid = document.getElementById('writing-grid');
+        projects.writing.forEach(project => {
+            writingGrid.appendChild(createProjectCard(project));
+        });
+
+        // Navigation
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const sections = document.querySelectorAll('.section');
+
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetSection = btn.dataset.section;
+
+                navButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                sections.forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                document.getElementById(targetSection).classList.add('active');
+            });
+        });
+
+        // Custom Cursor
+        const cursor = document.getElementById('cursor');
+        const cursorTrail = document.getElementById('cursor-trail');
+        let mouseX = 0, mouseY = 0;
+        let trailX = 0, trailY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        function updateCursor() {
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+
+            trailX += (mouseX - trailX) * 0.2;
+            trailY += (mouseY - trailY) * 0.2;
+            cursorTrail.style.left = trailX + 'px';
+            cursorTrail.style.top = trailY + 'px';
+
+            requestAnimationFrame(updateCursor);
+        }
+        updateCursor();
+
+        // Cursor interactions
+        document.querySelectorAll('.project-card, button').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.transform = 'scale(2)';
+                cursor.style.borderColor = '#fff';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.transform = 'scale(1)';
+                cursor.style.borderColor = '#888';
+            });
+        });
+
+        // Background Canvas - Particle System
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = 50;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 2 + 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(150, 150, 150, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            // Draw connections
+            particles.forEach((p1, i) => {
+                particles.slice(i + 1).forEach(p2 => {
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(150, 150, 150, ${0.2 * (1 - distance / 150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                });
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        animateParticles();
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

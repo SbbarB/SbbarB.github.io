@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferrofluid to Balloon Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: 600;
+            color: #333333;
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">Your cursor is a magnet. Combine them all and click...</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+
+    <script>
+        let currentMode = 'ferro'; // 'ferro' or 'balloon'
+        let renderer, scene, camera;
+
+        // Scene setup
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0xffffff, 1);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Mouse tracking (for ferro mode)
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        let mouseWorldPos = new THREE.Vector3(0, 0, 0);
+
+        // Monochrome color scheme - shades of gray
+        const colors = [
+            0x000000, // Black
+            0x333333, // Dark gray
+            0x666666, // Medium gray
+            0x999999, // Light gray
+            0xcccccc, // Very light gray
+        ];
+
+        // Store all ferrofluid objects
+        const ferrofluids = [];
+        let nextFerrofluidId = 0;
+
+        // Add movement physics properties to each ferrofluid
+        function addMovementPhysics(ferrofluid) {
+            ferrofluid.velocity = new THREE.Vector3(0, 0, 0);
+            ferrofluid.originalPosition = ferrofluid.mesh.position.clone();
+            ferrofluid.mass = ferrofluid.isMain ? 2.0 : 1.0;
+            ferrofluid.id = nextFerrofluidId++;
+            ferrofluid.isMerging = false;
+            ferrofluid.separationForce = new THREE.Vector3(0, 0, 0);
+        }
+
+        // Create main large black ferrofluid in center
+        function createMainFerrofluid() {
+            const sphereRadius = 3.5;
+            const subdivisions = 128;
+            const geometry = new THREE.SphereGeometry(sphereRadius, subdivisions, subdivisions);
+
+            const originalPositions = geometry.attributes.position.array.slice();
+            const vertexCount = geometry.attributes.position.count;
+            const velocities = new Float32Array(vertexCount);
+
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x000000,
+                shininess: 150,
+                specular: 0x666666,
+                transparent: false,
+                side: THREE.DoubleSide
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(0, 0, 0);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            ferrofluids.push({
+                mesh: mesh,
+                geometry: geometry,
+                originalPositions: originalPositions,
+                velocities: velocities,
+                vertexCount: vertexCount,
+                radius: sphereRadius,
+                isMain: true
+            });
+
+            addMovementPhysics(ferrofluids[ferrofluids.length - 1]);
+        }
+
+        // Create smaller monochrome ferrofluids scattered around
+        function createSmallFerrofluids() {
+            const numSmall = 6; // Reduced from 12
+            const baseRadius = 1.8;
+            const subdivisions = 96;
+            const mainRadius = 3.5;
+            const minDistance = 1.5;
+
+            const placedPositions = [new THREE.Vector3(0, 0, 0)];
+
+            for (let i = 0; i < numSmall; i++) {
+                // Vary the size of each ferrofluid
+                const sizeVariation = 0.7 + Math.random() * 0.8; // 0.7 to 1.5 multiplier
+                const smallRadius = baseRadius * sizeVariation;
+
+                const geometry = new THREE.SphereGeometry(smallRadius, subdivisions, subdivisions);
+
+                const originalPositions = geometry.attributes.position.array.slice();
+                const vertexCount = geometry.attributes.position.count;
+                const velocities = new Float32Array(vertexCount);
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: colors[i % colors.length],
+                    shininess: 150,
+                    specular: 0x888888,
+                    transparent: false,
+                    side: THREE.DoubleSide
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+
+                // Find non-overlapping position
+                let position;
+                let attempts = 0;
+                const maxAttempts = 100;
+
+                do {
+                    const angle = (i / numSmall) * Math.PI * 2 + (Math.random() - 0.5) * 1.0;
+                    const distance = 7 + Math.random() * 12;
+                    const height = (Math.random() - 0.5) * 14;
+
+                    position = new THREE.Vector3(
+                        Math.cos(angle) * distance,
+                        height,
+                        Math.sin(angle) * distance
+                    );
+
+                    attempts++;
+                } while (!isPositionValid(position, placedPositions, smallRadius, mainRadius, minDistance) && attempts < maxAttempts);
+
+                if (attempts >= maxAttempts) {
+                    const fallbackAngle = (i / numSmall) * Math.PI * 2;
+                    position = new THREE.Vector3(
+                        Math.cos(fallbackAngle) * 20,
+                        (Math.random() - 0.5) * 10,
+                        Math.sin(fallbackAngle) * 20
+                    );
+                }
+
+                mesh.position.copy(position);
+                placedPositions.push(position);
+
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+
+                ferrofluids.push({
+                    mesh: mesh,
+                    geometry: geometry,
+                    originalPositions: originalPositions,
+                    velocities: velocities,
+                    vertexCount: vertexCount,
+                    radius: smallRadius,
+                    isMain: false
+                });
+
+                addMovementPhysics(ferrofluids[ferrofluids.length - 1]);
+            }
+        }
+
+        // Check if position is valid (no overlapping)
+        function isPositionValid(newPos, existingPositions, newRadius, mainRadius, minGap) {
+            for (let j = 0; j < existingPositions.length; j++) {
+                const existingPos = existingPositions[j];
+                const distance = newPos.distanceTo(existingPos);
+
+                let requiredDistance;
+                if (j === 0) {
+                    requiredDistance = mainRadius + newRadius + minGap;
+                } else {
+                    requiredDistance = newRadius + newRadius + minGap;
+                }
+
+                if (distance < requiredDistance) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Check for merging and separation between ferrofluids
+        function updateFerrofluidInteractions() {
+            for (let i = 0; i < ferrofluids.length; i++) {
+                ferrofluids[i].separationForce.set(0, 0, 0);
+
+                for (let j = i + 1; j < ferrofluids.length; j++) {
+                    const ferroA = ferrofluids[i];
+                    const ferroB = ferrofluids[j];
+
+                    const distance = ferroA.mesh.position.distanceTo(ferroB.mesh.position);
+                    const combinedRadius = ferroA.radius + ferroB.radius;
+                    const mergeThreshold = combinedRadius * 0.8;
+                    const separationThreshold = combinedRadius * 1.5;
+
+                    // MERGING: When ferrofluids get close enough
+                    if (distance < mergeThreshold && !ferroA.isMerging && !ferroB.isMerging) {
+                        performSimpleMerge(ferroA, ferroB);
+                    }
+                    // ATTRACTION: Gentle pull when moderately close
+                    else if (distance < separationThreshold && distance > mergeThreshold) {
+                        const attractDirection = ferroB.mesh.position.clone().sub(ferroA.mesh.position).normalize();
+                        const attractForce = 0.0004;
+
+                        ferroA.velocity.add(attractDirection.clone().multiplyScalar(attractForce));
+                        ferroB.velocity.add(attractDirection.clone().multiplyScalar(-attractForce));
+                    }
+                    // SEPARATION: Only when too close but not merging
+                    else if (distance < combinedRadius * 1.1 && distance > mergeThreshold) {
+                        const repelDirection = ferroA.mesh.position.clone().sub(ferroB.mesh.position).normalize();
+                        const repelForce = (combinedRadius * 1.1 - distance) * 0.001;
+
+                        ferroA.separationForce.add(repelDirection.clone().multiplyScalar(repelForce));
+                        ferroB.separationForce.add(repelDirection.clone().multiplyScalar(-repelForce));
+                    }
+                }
+            }
+        }
+
+        // Simple merging function
+        function performSimpleMerge(ferroA, ferroB) {
+            const absorber = ferroA.radius >= ferroB.radius ? ferroA : ferroB;
+            const absorbed = ferroA.radius >= ferroB.radius ? ferroB : ferroA;
+
+            // Update absorber properties
+            const newRadius = Math.pow(Math.pow(absorber.radius, 3) + Math.pow(absorbed.radius, 3), 1/3);
+            absorber.radius = newRadius;
+            absorber.mass += absorbed.mass;
+            absorber.isMain = newRadius > 2.5;
+
+            // Remove absorbed ferrofluid
+            scene.remove(absorbed.mesh);
+            const absorbedIndex = ferrofluids.indexOf(absorbed);
+            if (absorbedIndex > -1) {
+                ferrofluids.splice(absorbedIndex, 1);
+            }
+
+            // Check if only one ferrofluid remains - enable click to explode
+            if (ferrofluids.length === 1) {
+                document.getElementById('instructions').textContent = 'Click to explode!';
+            }
+        }
+
+        // Simplified, cleaner lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        scene.add(ambientLight);
+
+        // Single main directional light with shadows
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(5, 10, 8);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+
+        // Subtle fill light from below for definition
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        fillLight.position.set(0, -5, 5);
+        scene.add(fillLight);
+
+        // Create invisible plane for mouse ray casting
+        const planeGeometry = new THREE.PlaneGeometry(40, 30);
+        const planeMaterial = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        scene.add(plane);
+
+        // Position camera
+        camera.position.set(0, 3, 25);
+        camera.lookAt(0, 0, 0);
+
+        // Mouse movement handler
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(plane);
+
+            if (intersects.length > 0) {
+                mouseWorldPos.copy(intersects[0].point);
+            }
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+
+        // Ferrofluid physics with cursor-centric spikes and smooth movement
+        function updateFerrofluid(ferrofluid) {
+            const positions = ferrofluid.geometry.attributes.position.array;
+            const time = Date.now() * 0.001;
+
+            // MAGNETIC ATTRACTION - Move ferrofluid toward mouse
+            const ferrofluidCenter = ferrofluid.mesh.position;
+            const distanceToMouse = ferrofluidCenter.distanceTo(mouseWorldPos);
+
+            if (distanceToMouse > 0.5 && distanceToMouse < 25) {
+                const attractionDirection = mouseWorldPos.clone().sub(ferrofluidCenter).normalize();
+                const maxForce = ferrofluid.isMain ? 0.006 : 0.009;
+                const magneticForce = maxForce / (distanceToMouse * 0.3 + 1);
+
+                ferrofluid.velocity.add(attractionDirection.multiplyScalar(magneticForce));
+            }
+
+            // Apply separation forces
+            ferrofluid.velocity.add(ferrofluid.separationForce);
+
+            // Smoother damping and position update
+            ferrofluid.velocity.multiplyScalar(0.88);
+            ferrofluidCenter.add(ferrofluid.velocity);
+
+            // Gentle restoring force when far from mouse
+            if (distanceToMouse > 15) {
+                const restoreDirection = ferrofluid.originalPosition.clone().sub(ferrofluidCenter);
+                const restoreForce = restoreDirection.multiplyScalar(0.001);
+                ferrofluidCenter.add(restoreForce);
+            }
+
+            // CURSOR-CENTRIC SPIKE DEFORMATION
+            for (let i = 0; i < ferrofluid.vertexCount; i++) {
+                const i3 = i * 3;
+
+                const originalX = ferrofluid.originalPositions[i3];
+                const originalY = ferrofluid.originalPositions[i3 + 1];
+                const originalZ = ferrofluid.originalPositions[i3 + 2];
+
+                const vertex = new THREE.Vector3(originalX, originalY, originalZ);
+                const vertexNormal = vertex.clone().normalize();
+
+                // Transform to world space
+                const worldVertex = vertex.clone().add(ferrofluid.mesh.position);
+                const vertexDistanceToMouse = worldVertex.distanceTo(mouseWorldPos);
+
+                if (vertexDistanceToMouse < 0.1) continue;
+
+                // Calculate direction from vertex to mouse cursor
+                const magneticField = mouseWorldPos.clone().sub(worldVertex);
+                const magneticDirection = magneticField.normalize();
+                const fieldAlignment = vertexNormal.dot(magneticDirection);
+
+                // Distance-based magnetic influence
+                const maxInfluence = ferrofluid.isMain ? 15 : 12;
+                const distanceInfluence = Math.max(0, (maxInfluence - vertexDistanceToMouse) / maxInfluence);
+                const smoothInfluence = Math.pow(distanceInfluence, 1.2);
+
+                // Base radius with subtle breathing
+                const organicBreathing = Math.sin(time * 0.4 + vertex.length() * 0.8) * 0.015;
+                let targetRadius = ferrofluid.radius + organicBreathing;
+
+                // Create spikes toward mouse cursor when nearby
+                if (fieldAlignment > 0 && smoothInfluence > 0.02) {
+                    const angleFromFieldLine = Math.acos(Math.max(0, Math.min(1, fieldAlignment)));
+                    let totalSpikeStrength = 0;
+
+                    const sizeScale = ferrofluid.radius / 1.8;
+                    const spikeScale = (ferrofluid.isMain ? 0.8 : 0.6) * sizeScale;
+
+                    // Sharp central spike toward cursor
+                    const centralSpikeStrength = Math.pow(fieldAlignment, 2.5);
+                    const centralSpikeLength = centralSpikeStrength * smoothInfluence * 1.4 * spikeScale;
+                    totalSpikeStrength += centralSpikeLength;
+
+                    // Ring patterns
+                    const ring1Angle = 0.4;
+                    if (angleFromFieldLine <= ring1Angle) {
+                        const ring1Factor = Math.cos(angleFromFieldLine / ring1Angle * Math.PI / 2);
+                        const ring1Strength = Math.pow(ring1Factor, 2.5);
+                        const ring1Length = ring1Strength * smoothInfluence * 1.0 * spikeScale;
+                        totalSpikeStrength += ring1Length;
+                    }
+
+                    const ring2Angle = 0.7;
+                    if (angleFromFieldLine <= ring2Angle && angleFromFieldLine > ring1Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring1Angle) / (ring2Angle - ring1Angle);
+                        const ring2Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring2Strength = Math.pow(ring2Factor, 3.0);
+                        const ring2Length = ring2Strength * smoothInfluence * 0.5 * spikeScale;
+                        totalSpikeStrength += ring2Length;
+                    }
+
+                    const ring3Angle = 1.0;
+                    if (angleFromFieldLine <= ring3Angle && angleFromFieldLine > ring2Angle) {
+                        const normalizedAngle = (angleFromFieldLine - ring2Angle) / (ring3Angle - ring2Angle);
+                        const ring3Factor = Math.cos(normalizedAngle * Math.PI / 2);
+                        const ring3Strength = Math.pow(ring3Factor, 4.0);
+                        const ring3Length = ring3Strength * smoothInfluence * 0.3 * spikeScale;
+                        totalSpikeStrength += ring3Length;
+                    }
+
+                    targetRadius += totalSpikeStrength;
+
+                    const detailScale = Math.min(1.0, sizeScale * 0.5);
+                    const surfaceDetail = Math.sin(vertex.x * 4 + time * 0.8) *
+                                         Math.cos(vertex.y * 4 + time * 0.6) *
+                                         Math.sin(vertex.z * 4 + time * 0.4) * 0.008 * detailScale;
+                    if (totalSpikeStrength > 0.15) {
+                        targetRadius += surfaceDetail * totalSpikeStrength * 0.3;
+                    }
+                }
+
+                // Non-magnetic side
+                if (fieldAlignment <= 0) {
+                    targetRadius = ferrofluid.radius - Math.abs(fieldAlignment) * 0.015;
+                }
+
+                // Smoother physics with enhanced stability
+                const currentVertex = new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2]);
+                const currentRadius = currentVertex.length();
+
+                const radiusDiff = targetRadius - currentRadius;
+                const springForce = 0.06;
+                const damping = 0.96;
+
+                ferrofluid.velocities[i] += radiusDiff * springForce;
+                ferrofluid.velocities[i] *= damping;
+
+                const maxVelocity = 0.15;
+                ferrofluid.velocities[i] = Math.max(-maxVelocity, Math.min(maxVelocity, ferrofluid.velocities[i]));
+
+                const newRadius = Math.max(0.3, currentRadius + ferrofluid.velocities[i]);
+
+                if (isFinite(newRadius) && newRadius > 0) {
+                    positions[i3] = vertexNormal.x * newRadius;
+                    positions[i3 + 1] = vertexNormal.y * newRadius;
+                    positions[i3 + 2] = vertexNormal.z * newRadius;
+                }
+            }
+
+            ferrofluid.geometry.attributes.position.needsUpdate = true;
+
+            if (Math.random() < 0.1) {
+                ferrofluid.geometry.computeVertexNormals();
+            }
+        }
+
+        // Click handler for ferro mode
+        function onClickFerro(event) {
+            if (currentMode !== 'ferro' || ferrofluids.length !== 1) return;
+
+            // Transition to balloon mode
+            transitionToBalloonMode();
+        }
+
+        window.addEventListener('click', onClickFerro);
+
+        // Transition function with explosion
+        function transitionToBalloonMode() {
+            currentMode = 'transitioning';
+
+            const finalFerro = ferrofluids[0];
+            const centerPos = finalFerro.mesh.position.clone();
+
+            // Create explosion particles (splattered pieces)
+            const splatParticles = [];
+            const text = 'CREATIVETECHNOLOGIST';
+            const numParticles = text.length;
+
+            // Calculate balloon positions first
+            const spacing = 2.7; // Increased from 1.8 to match bigger letter size (1.8 * 1.5)
+            const rows = [
+                { letters: text.slice(0, 8).split(''), y: 3 },
+                { letters: text.slice(8).split(''), y: 1 }
+            ];
+
+            const balloonPositions = [];
+            rows.forEach((row, rowIndex) => {
+                const rowWidth = row.letters.length * spacing;
+                const startX = -rowWidth / 2;
+
+                row.letters.forEach((letter, colIndex) => {
+                    const x = startX + colIndex * spacing + 0.6;
+                    const y = row.y + (Math.random() - 0.5) * 0.3;
+                    const z = (Math.random() - 0.5) * 0.5;
+                    balloonPositions.push(new THREE.Vector3(x, y, z));
+                });
+            });
+
+            // Create splat particles - bigger and more visible
+            for (let i = 0; i < numParticles; i++) {
+                const geometry = new THREE.SphereGeometry(0.6, 16, 16); // Bigger splats
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x606060, // Dark silver instead of black
+                    shininess: 150,
+                    specular: 0xcccccc // Brighter specular highlights
+                });
+
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(centerPos);
+
+                // Random explosion direction - more dramatic
+                const angle = (Math.PI * 2 * i) / numParticles + (Math.random() - 0.5) * 0.5;
+                const elevation = (Math.random() - 0.5) * Math.PI * 0.6;
+                const speed = 0.5 + Math.random() * 0.6; // Faster initial speed
+
+                particle.velocity = new THREE.Vector3(
+                    Math.cos(angle) * Math.cos(elevation) * speed,
+                    Math.sin(elevation) * speed,
+                    Math.sin(angle) * Math.cos(elevation) * speed
+                );
+
+                particle.targetPosition = balloonPositions[i];
+                particle.castShadow = true;
+
+                scene.add(particle);
+                splatParticles.push(particle);
+            }
+
+            // Hide original ferro
+            finalFerro.mesh.visible = false;
+
+            // Add white flash on explosion
+            const flash = new THREE.PointLight(0xffffff, 10, 30);
+            flash.position.copy(centerPos);
+            scene.add(flash);
+
+            // Explosion animation
+            const explosionStartTime = Date.now();
+            const explosionDuration = 800;
+            const reverseDuration = 800;
+            const inflationDuration = 1200;
+
+            const maxDistances = splatParticles.map(p => {
+                const direction = p.velocity.clone().normalize();
+                return direction.multiplyScalar(8); // Max distance to travel
+            });
+
+            function animateExplosion() {
+                const elapsed = Date.now() - explosionStartTime;
+                const t = elapsed / explosionDuration;
+
+                if (t < 1) {
+                    // Fade out flash quickly
+                    if (t < 0.15) {
+                        flash.intensity = 10 * (1 - t / 0.15);
+                    } else {
+                        flash.intensity = 0;
+                    }
+
+                    // Explosion phase - particles fly outward quickly
+                    splatParticles.forEach((particle, i) => {
+                        const explosionProgress = t * t; // Ease in
+                        particle.position.copy(centerPos).add(maxDistances[i].clone().multiplyScalar(explosionProgress));
+
+                        // Rotation
+                        particle.rotation.x = explosionProgress * Math.PI * 2;
+                        particle.rotation.y = explosionProgress * Math.PI * 1.5;
+                        particle.rotation.z = explosionProgress * Math.PI;
+                    });
+
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    // Remove flash
+                    scene.remove(flash);
+
+                    // Store explosion end positions
+                    const explosionEndPositions = splatParticles.map(p => p.position.clone());
+
+                    // Start reverse to balloon positions
+                    animateReverseToBalloons(explosionEndPositions);
+                }
+            }
+
+            function animateReverseToBalloons(explosionEndPositions) {
+                const reverseStartTime = Date.now();
+
+                function reverse() {
+                    const elapsed = Date.now() - reverseStartTime;
+                    const t = Math.min(elapsed / reverseDuration, 1);
+
+                    // Ease in-out
+                    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+                    splatParticles.forEach((particle, i) => {
+                        // Lerp from explosion end to target position
+                        particle.position.lerpVectors(explosionEndPositions[i], particle.targetPosition, eased);
+
+                        // Slow down rotation
+                        const rotationFade = 1 - eased;
+                        particle.rotation.x = Math.PI * 2 * rotationFade;
+                        particle.rotation.y = Math.PI * 1.5 * rotationFade;
+                        particle.rotation.z = Math.PI * rotationFade;
+                    });
+
+                    renderer.render(scene, camera);
+
+                    if (t < 1) {
+                        requestAnimationFrame(reverse);
+                    } else {
+                        // Inflate into letters
+                        inflateIntoLetters();
+                    }
+                }
+
+                reverse();
+            }
+
+            async function inflateIntoLetters() {
+                // Load font for creating letter geometries
+                const fontLoader = new THREE.FontLoader();
+                const font = await new Promise((resolve) => {
+                    fontLoader.load(
+                        'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/fonts/helvetiker_bold.typeface.json',
+                        resolve
+                    );
+                });
+
+                // Create letter meshes at the same positions as spheres
+                const text = 'CREATIVETECHNOLOGIST';
+                const letters = text.split('');
+                const letterMeshes = [];
+
+                splatParticles.forEach((particle, i) => {
+                    const letter = letters[i];
+
+                    const textGeometry = new THREE.TextGeometry(letter, {
+                        font: font,
+                        size: 1.8, // Increased from 1.2
+                        height: 0.9, // Increased from 0.6
+                        curveSegments: 32,
+                        bevelEnabled: true,
+                        bevelThickness: 0.35, // Increased from 0.25
+                        bevelSize: 0.2, // Increased from 0.15
+                        bevelSegments: 16
+                    });
+
+                    textGeometry.center();
+
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x606060, // Dark silver instead of black
+                        shininess: 150,
+                        specular: 0xcccccc, // Brighter specular highlights
+                        transparent: true,
+                        opacity: 0
+                    });
+
+                    const letterMesh = new THREE.Mesh(textGeometry, material);
+                    letterMesh.position.copy(particle.position);
+                    // Start at sphere size (0.6 radius sphere ≈ 0.6 scale for letter)
+                    letterMesh.scale.set(0.6, 0.6, 0.6);
+                    letterMesh.castShadow = true;
+                    letterMesh.receiveShadow = true;
+
+                    scene.add(letterMesh);
+                    letterMeshes.push(letterMesh);
+                });
+
+                // Animate: seamless morph from spheres to letters with inflation
+                const inflationStartTime = Date.now();
+
+                function animateInflation() {
+                    const elapsed = Date.now() - inflationStartTime;
+                    const t = Math.min(elapsed / inflationDuration, 1);
+
+                    if (t < 1) {
+                        // Continuous inflation: sphere to letter from 0.6 → 1.4 with crossfade and bounce
+
+                        // Calculate overall scale (0.6 to 1.4)
+                        let currentScale;
+                        let fadeProgress;
+
+                        if (t < 0.4) {
+                            // Phase 1: Slower crossfade while growing 0.6 → 0.95
+                            const t1 = t / 0.4;
+                            const growEase = t1 * t1 * (3 - 2 * t1); // Smoothstep
+                            currentScale = 0.6 + (growEase * 0.35); // 0.6 to 0.95
+                            fadeProgress = t1 * t1; // Accelerated fade
+                        } else {
+                            // Phase 2: Letter inflates with bounce 0.95 → 1.4
+                            const t2 = (t - 0.4) / 0.6;
+
+                            // Ease out back for bounce effect
+                            const c1 = 1.70158;
+                            const c3 = c1 + 1;
+                            const bounceEase = 1 + c3 * Math.pow(t2 - 1, 3) + c1 * Math.pow(t2 - 1, 2);
+
+                            currentScale = 0.95 + (bounceEase * 0.45); // 0.95 to 1.4
+                            fadeProgress = 1; // Fully faded
+                        }
+
+                        splatParticles.forEach((particle, i) => {
+                            particle.scale.set(currentScale, currentScale, currentScale);
+                            particle.material.opacity = 1 - fadeProgress;
+                        });
+
+                        letterMeshes.forEach((letterMesh, i) => {
+                            letterMesh.scale.set(currentScale, currentScale, currentScale);
+                            letterMesh.material.opacity = fadeProgress;
+                        });
+
+                        renderer.render(scene, camera);
+                        requestAnimationFrame(animateInflation);
+                    } else {
+                        // Remove sphere particles
+                        splatParticles.forEach(particle => {
+                            scene.remove(particle);
+                        });
+
+                        // Letters are now at 1.4 scale - settle them to 1.0
+                        const settleStartTime = Date.now();
+                        const settleDuration = 400;
+
+                        function settleAnimation() {
+                            const elapsed = Date.now() - settleStartTime;
+                            const st = Math.min(elapsed / settleDuration, 1);
+
+                            if (st < 1) {
+                                // Ease out for natural settle
+                                const easeOut = 1 - Math.pow(1 - st, 3);
+                                const currentScale = 1.4 - (easeOut * 0.4);
+
+                                letterMeshes.forEach((letterMesh) => {
+                                    letterMesh.scale.set(currentScale, currentScale, currentScale);
+                                });
+
+                                renderer.render(scene, camera);
+                                requestAnimationFrame(settleAnimation);
+                            } else {
+                                // Settled to 1.0 - NOW transition to full balloon animation
+                                letterMeshes.forEach((letterMesh) => {
+                                    letterMesh.scale.set(1, 1, 1);
+                                });
+                                completeBalloonTransition(letterMeshes, true);
+                            }
+                        }
+
+                        settleAnimation();
+                    }
+                }
+
+                animateInflation();
+            }
+
+            explosionStartTime;
+            animateExplosion();
+        }
+
+        function completeBalloonTransition(letterMeshes, shouldInflate) {
+            // Keep letter mesh positions
+            const letterPositions = letterMeshes.map(m => m.position.clone());
+
+            // Remove temporary letter meshes
+            letterMeshes.forEach(mesh => {
+                scene.remove(mesh);
+            });
+
+            // Clear ferro objects
+            ferrofluids.forEach(ferro => {
+                scene.remove(ferro.mesh);
+            });
+            ferrofluids.length = 0;
+
+            // Update instructions
+            document.getElementById('instructions').textContent = 'Click to pop';
+
+            // Clear scene and reinitialize for balloon mode
+            scene.remove(plane);
+
+            // DON'T move camera - keep it at ferro position (0, 3, 25) for seamless transition
+            // camera.position.set(0, 0, 15);
+            // camera.lookAt(0, 0, 0);
+
+            currentMode = 'balloon';
+
+            // Import balloon code with letter positions
+            initBalloonMode(letterPositions);
+        }
+
+        // Balloon mode initialization
+        function initBalloonMode(splatPositions) {
+            // Store splat positions globally for balloon script
+            window.splatPositions = splatPositions;
+            // Load Three.js modules for balloon mode
+            const script = document.createElement('script');
+            script.type = 'importmap';
+            script.textContent = JSON.stringify({
+                "imports": {
+                    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+                }
+            });
+            document.head.appendChild(script);
+
+            // Load balloon script
+            const balloonScript = document.createElement('script');
+            balloonScript.type = 'module';
+            balloonScript.textContent = `
+                import * as THREE from 'three';
+                import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+                import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+                // Use existing scene, camera, renderer
+                const existingScene = window.scene;
+                const existingCamera = window.camera;
+                const existingRenderer = window.renderer;
+
+                // Mouse tracking
+                const mouse = {
+                    x: 0,
+                    y: 0,
+                    prevX: 0,
+                    prevY: 0,
+                    worldX: 0,
+                    worldY: 0
+                };
+
+                const raycaster = new THREE.Raycaster();
+                const mouseVector = new THREE.Vector2();
+
+                // Tie point in 3D space
+                const tiePoint = new THREE.Vector3(0, -6, 0);
+
+                // Create ribbon
+                function createRibbon() {
+                    const ribbonGroup = new THREE.Group();
+
+                    const ribbonMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x202020,
+                        shininess: 150,
+                        specular: 0x888888,
+                        side: THREE.DoubleSide
+                    });
+
+                    const ribbonCurve = new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(0, 0.3, 0),
+                        new THREE.Vector3(-0.2, 0.1, 0.1),
+                        new THREE.Vector3(0.15, -0.2, -0.1),
+                        new THREE.Vector3(-0.15, -0.5, 0.15),
+                        new THREE.Vector3(0.1, -0.8, -0.1),
+                        new THREE.Vector3(-0.1, -1.2, 0.1),
+                        new THREE.Vector3(0.05, -1.6, 0)
+                    ]);
+
+                    const ribbonGeometry = new THREE.TubeGeometry(ribbonCurve, 32, 0.12, 8, false);
+                    const ribbon1 = new THREE.Mesh(ribbonGeometry, ribbonMaterial);
+                    ribbonGroup.add(ribbon1);
+
+                    const ribbonCurve2 = new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(0, 0.3, 0),
+                        new THREE.Vector3(0.2, 0.1, -0.1),
+                        new THREE.Vector3(-0.15, -0.2, 0.1),
+                        new THREE.Vector3(0.15, -0.5, -0.15),
+                        new THREE.Vector3(-0.1, -0.8, 0.1),
+                        new THREE.Vector3(0.1, -1.2, -0.1),
+                        new THREE.Vector3(-0.05, -1.6, 0)
+                    ]);
+
+                    const ribbonGeometry2 = new THREE.TubeGeometry(ribbonCurve2, 32, 0.12, 8, false);
+                    const ribbon2 = new THREE.Mesh(ribbonGeometry2, ribbonMaterial);
+                    ribbonGroup.add(ribbon2);
+
+                    const knot = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.2, 16, 16),
+                        ribbonMaterial
+                    );
+                    knot.scale.set(1, 0.6, 0.6);
+                    ribbonGroup.add(knot);
+
+                    ribbonGroup.position.copy(tiePoint);
+                    return ribbonGroup;
+                }
+
+                const ribbon = createRibbon();
+                existingScene.add(ribbon);
+
+                // Balloon class
+                class LetterBalloon {
+                    constructor(x, y, z, letter, color) {
+                        this.restPosition = new THREE.Vector3(x, y, z);
+                        this.position = new THREE.Vector3(x, y, z);
+                        this.velocity = new THREE.Vector3(0, 0, 0);
+                        this.letter = letter;
+                        this.color = color;
+                        this.mesh = null;
+                        this.stringPoints = [];
+                        this.stringLine = null;
+
+                        this.createBalloon();
+                    }
+
+                    async createBalloon() {
+                        const loader = new FontLoader();
+
+                        const font = await new Promise((resolve) => {
+                            loader.load(
+                                'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/fonts/helvetiker_bold.typeface.json',
+                                (loadedFont) => resolve(loadedFont)
+                            );
+                        });
+
+                        const textGeometry = new TextGeometry(this.letter, {
+                            font: font,
+                            size: 1.8,
+                            height: 0.9,
+                            curveSegments: 32,
+                            bevelEnabled: true,
+                            bevelThickness: 0.35,
+                            bevelSize: 0.2,
+                            bevelSegments: 16
+                        });
+
+                        textGeometry.center();
+
+                        const material = new THREE.MeshPhongMaterial({
+                            color: 0x606060, // Dark silver instead of black
+                            shininess: 150,
+                            specular: 0xcccccc, // Brighter specular highlights
+                            transparent: false
+                        });
+
+                        this.mesh = new THREE.Mesh(textGeometry, material);
+                        this.mesh.position.copy(this.position);
+                        this.mesh.castShadow = true;
+                        this.mesh.receiveShadow = true;
+                        this.mesh.userData.balloon = this;
+                        this.popped = false;
+
+                        // Start at full scale and visible for seamless transition
+                        this.mesh.scale.set(1, 1, 1);
+                        this.mesh.material.opacity = 1;
+                        this.mesh.material.transparent = false;
+
+                        existingScene.add(this.mesh);
+
+                        this.updateStrings();
+                        this.createHangingString();
+                    }
+
+                    updateStrings() {
+                        if (this.stringLine) {
+                            existingScene.remove(this.stringLine);
+                        }
+
+                        const curve = new THREE.QuadraticBezierCurve3(
+                            this.position,
+                            new THREE.Vector3(
+                                (this.position.x + tiePoint.x) / 2,
+                                (this.position.y + tiePoint.y) / 2,
+                                (this.position.z + tiePoint.z) / 2
+                            ),
+                            tiePoint
+                        );
+
+                        const points = curve.getPoints(50);
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const material = new THREE.LineBasicMaterial({
+                            color: 0xcccccc,
+                            linewidth: 2
+                        });
+
+                        this.stringLine = new THREE.Line(geometry, material);
+                        existingScene.add(this.stringLine);
+                    }
+
+                    createHangingString() {
+                        if (!this.hangingStringStart) {
+                            this.hangingStringStart = new THREE.Vector3(
+                                tiePoint.x + (Math.random() - 0.5) * 0.4,
+                                tiePoint.y - 0.2,
+                                tiePoint.z + (Math.random() - 0.5) * 0.1
+                            );
+                        }
+
+                        this.stringSegments = [];
+                        const numSegments = 40;
+                        const totalStringLength = 25;
+                        const segmentLength = totalStringLength / numSegments;
+
+                        for (let i = 0; i <= numSegments; i++) {
+                            const segment = {
+                                position: new THREE.Vector3(
+                                    this.hangingStringStart.x,
+                                    this.hangingStringStart.y - (i * segmentLength),
+                                    this.hangingStringStart.z
+                                ),
+                                prevPosition: new THREE.Vector3(
+                                    this.hangingStringStart.x,
+                                    this.hangingStringStart.y - (i * segmentLength),
+                                    this.hangingStringStart.z
+                                ),
+                                locked: i === 0
+                            };
+                            this.stringSegments.push(segment);
+                        }
+
+                        this.segmentLength = segmentLength;
+                        this.updateHangingString();
+                    }
+
+                    updateHangingString() {
+                        if (!this.stringSegments) return;
+
+                        for (let i = 0; i < this.stringSegments.length; i++) {
+                            const segment = this.stringSegments[i];
+
+                            if (segment.locked) {
+                                segment.position.copy(this.hangingStringStart);
+                                continue;
+                            }
+
+                            const dx = mouse.worldX - segment.position.x;
+                            const dy = mouse.worldY - segment.position.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            if (dist < 1.2) {
+                                const force = (1.2 - dist) / 1.2;
+                                const pushX = (segment.position.x - mouse.worldX) * force * 0.25;
+                                const pushY = (segment.position.y - mouse.worldY) * force * 0.20;
+                                segment.position.x += pushX;
+                                segment.position.y += pushY;
+                            }
+
+                            const velocityX = (segment.position.x - segment.prevPosition.x) * 0.99;
+                            const velocityY = (segment.position.y - segment.prevPosition.y) * 0.99;
+                            const velocityZ = (segment.position.z - segment.prevPosition.z) * 0.99;
+
+                            segment.prevPosition.copy(segment.position);
+
+                            segment.position.x += velocityX + (Math.random() - 0.5) * 0.002;
+                            segment.position.y += velocityY - 0.004;
+                            segment.position.z += velocityZ + (Math.random() - 0.5) * 0.001;
+                        }
+
+                        for (let iter = 0; iter < 3; iter++) {
+                            for (let i = 1; i < this.stringSegments.length; i++) {
+                                const segment = this.stringSegments[i];
+                                const prevSegment = this.stringSegments[i - 1];
+
+                                const dx = segment.position.x - prevSegment.position.x;
+                                const dy = segment.position.y - prevSegment.position.y;
+                                const dz = segment.position.z - prevSegment.position.z;
+                                const distSq = dx * dx + dy * dy + dz * dz;
+                                const dist = Math.sqrt(distSq);
+
+                                if (dist === 0) continue;
+
+                                const diff = (this.segmentLength - dist) / dist;
+                                const offsetX = dx * diff * 0.5;
+                                const offsetY = dy * diff * 0.5;
+                                const offsetZ = dz * diff * 0.5;
+
+                                if (!prevSegment.locked) {
+                                    prevSegment.position.x -= offsetX;
+                                    prevSegment.position.y -= offsetY;
+                                    prevSegment.position.z -= offsetZ;
+                                }
+
+                                segment.position.x += offsetX;
+                                segment.position.y += offsetY;
+                                segment.position.z += offsetZ;
+                            }
+                        }
+
+                        if (this.hangingString) {
+                            existingScene.remove(this.hangingString);
+                        }
+
+                        const points = this.stringSegments.map(seg => seg.position);
+                        const hangingGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const hangingMaterial = new THREE.LineBasicMaterial({
+                            color: 0x999999,
+                            linewidth: 2,
+                            opacity: 0.8,
+                            transparent: true
+                        });
+
+                        this.hangingString = new THREE.Line(hangingGeometry, hangingMaterial);
+                        existingScene.add(this.hangingString);
+                    }
+
+                    pop() {
+                        if (this.popped) return;
+                        this.popped = true;
+
+                        if (!this.mesh) return;
+
+                        const popPosition = this.mesh.position.clone();
+
+                        this.mesh.visible = false;
+                        if (this.stringLine) this.stringLine.visible = false;
+                        if (this.hangingString) this.hangingString.visible = false;
+
+                        const particles = [];
+                        const particleGeometry = new THREE.PlaneGeometry(0.2, 0.3);
+
+                        for (let i = 0; i < 8; i++) {
+                            const particleMaterial = new THREE.MeshBasicMaterial({
+                                color: 0x707070, // Lighter silver for pop particles
+                                transparent: true,
+                                opacity: 0.9,
+                                side: THREE.DoubleSide
+                            });
+
+                            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                            particle.position.copy(popPosition);
+
+                            const angle = (Math.PI * 2 * i) / 8;
+                            const speed = 0.25;
+                            particle.velocityX = Math.cos(angle) * speed;
+                            particle.velocityY = Math.sin(angle) * speed;
+                            particle.rotSpeed = (Math.random() - 0.5) * 0.2;
+
+                            existingScene.add(particle);
+                            particles.push(particle);
+                        }
+
+                        const flash = new THREE.PointLight(0xffffff, 5, 5);
+                        flash.position.copy(popPosition);
+                        existingScene.add(flash);
+
+                        let startTime = Date.now();
+                        const duration = 600;
+
+                        const animate = () => {
+                            const elapsed = Date.now() - startTime;
+                            const t = elapsed / duration;
+
+                            if (t < 1) {
+                                particles.forEach(p => {
+                                    p.position.x += p.velocityX;
+                                    p.position.y += p.velocityY;
+                                    p.velocityY -= 0.01;
+                                    p.rotation.z += p.rotSpeed;
+                                    p.material.opacity = 0.9 * (1 - t);
+                                });
+
+                                flash.intensity = t < 0.1 ? 5 * (1 - t / 0.1) : 0;
+
+                                requestAnimationFrame(animate);
+                            } else {
+                                particles.forEach(p => existingScene.remove(p));
+                                existingScene.remove(flash);
+
+                                setTimeout(() => this.reinflate(), 1500); // Reduced from 3000ms to 1500ms
+                            }
+                        };
+
+                        animate();
+                    }
+
+                    startInflation() {
+                        // Initial inflation animation from tiny sphere to letter
+                        const startTime = Date.now();
+                        const duration = 1000; // 1 second inflation
+
+                        const animate = () => {
+                            const elapsed = Date.now() - startTime;
+                            const t = elapsed / duration;
+
+                            if (t < 1) {
+                                // Ease out back (slight overshoot)
+                                const c1 = 1.70158;
+                                const c3 = c1 + 1;
+                                const eased = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+
+                                this.mesh.scale.set(eased, eased, eased);
+                                this.mesh.material.opacity = Math.min(1, t * 2);
+
+                                requestAnimationFrame(animate);
+                            } else {
+                                this.mesh.scale.set(1, 1, 1);
+                                this.mesh.material.opacity = 1;
+                                this.mesh.material.transparent = false;
+                            }
+                        };
+
+                        animate();
+                    }
+
+                    reinflate() {
+                        if (!this.popped) return;
+
+                        this.position.copy(this.restPosition);
+                        this.velocity.set(0, 0, 0);
+
+                        this.mesh.visible = true;
+                        this.mesh.scale.set(0.05, 0.05, 0.05);
+                        this.mesh.material.opacity = 0;
+                        this.mesh.material.transparent = true;
+                        this.mesh.position.copy(this.restPosition);
+                        this.mesh.rotation.set(0, 0, 0);
+
+                        if (this.stringLine) this.stringLine.visible = true;
+                        if (this.hangingString) this.hangingString.visible = true;
+
+                        const startTime = Date.now();
+                        const duration = 1200;
+
+                        const animate = () => {
+                            const elapsed = Date.now() - startTime;
+                            const t = elapsed / duration;
+
+                            if (t < 1) {
+                                let scale;
+                                if (t < 0.4) {
+                                    scale = 0.05 + (t / 0.4) * 0.4;
+                                } else {
+                                    const t2 = (t - 0.4) / 0.6;
+                                    scale = 0.45 + t2 * 0.55;
+                                }
+
+                                if (t > 0.85) {
+                                    const wobbleT = (t - 0.85) / 0.15;
+                                    const overshoot = Math.sin(wobbleT * Math.PI * 2) * 0.08 * (1 - wobbleT);
+                                    scale += overshoot;
+                                }
+
+                                this.mesh.scale.set(scale, scale, scale);
+                                this.mesh.material.opacity = Math.min(1, t * 1.5);
+
+                                requestAnimationFrame(animate);
+                            } else {
+                                this.mesh.scale.set(1, 1, 1);
+                                this.mesh.material.opacity = 1;
+                                this.mesh.material.transparent = false;
+                                this.mesh.rotation.set(0, 0, 0);
+                                this.popped = false;
+                            }
+                        };
+
+                        animate();
+                    }
+
+                    update() {
+                        if (this.popped) return;
+
+                        const balloonRadius = 1;
+                        const distToMouse = new THREE.Vector2(
+                            this.position.x - mouse.worldX,
+                            this.position.y - mouse.worldY
+                        ).length();
+
+                        if (distToMouse < balloonRadius + 1.5) {
+                            const pushDir = new THREE.Vector3(
+                                this.position.x - mouse.worldX,
+                                this.position.y - mouse.worldY,
+                                0
+                            ).normalize();
+
+                            const force = (balloonRadius + 1.5 - distToMouse) / 1.5;
+                            this.velocity.add(pushDir.multiplyScalar(force * 0.18));
+                        }
+
+                        this.position.add(this.velocity);
+
+                        const restDir = new THREE.Vector3().subVectors(this.restPosition, this.position);
+                        this.velocity.add(restDir.multiplyScalar(0.03));
+
+                        this.velocity.multiplyScalar(0.94);
+
+                        const stringLength = this.restPosition.distanceTo(tiePoint);
+                        const currentDist = this.position.distanceTo(tiePoint);
+
+                        if (currentDist > stringLength) {
+                            const constrainDir = new THREE.Vector3().subVectors(this.position, tiePoint);
+                            constrainDir.normalize().multiplyScalar(stringLength);
+                            this.position.copy(tiePoint).add(constrainDir);
+                            this.velocity.multiplyScalar(0.5);
+                        }
+
+                        if (this.mesh) {
+                            this.mesh.position.copy(this.position);
+                        }
+
+                        this.updateStrings();
+                        this.updateHangingString();
+                    }
+                }
+
+                // Create balloons
+                const balloons = [];
+                const text = 'CREATIVETECHNOLOGIST';
+                const letters = text.split('');
+                const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'silver'];
+
+                const spacing = 2.7; // Increased from 1.8 to match bigger letter size
+                const rows = [
+                    { letters: letters.slice(0, 8), y: 3 },
+                    { letters: letters.slice(8), y: 1 }
+                ];
+
+                let balloonIndex = 0;
+                rows.forEach((row, rowIndex) => {
+                    const rowWidth = row.letters.length * spacing;
+                    const startX = -rowWidth / 2;
+
+                    row.letters.forEach((letter, colIndex) => {
+                        const x = startX + colIndex * spacing + 0.6;
+                        const y = row.y + (Math.random() - 0.5) * 0.3;
+                        const z = (Math.random() - 0.5) * 0.5;
+                        const color = colors[balloonIndex % colors.length];
+
+                        const balloon = new LetterBalloon(x, y, z, letter, color);
+                        balloons.push(balloon);
+                        balloonIndex++;
+                    });
+                });
+
+                // Mouse events
+                document.addEventListener('mousemove', (e) => {
+                    mouse.prevX = mouse.x;
+                    mouse.prevY = mouse.y;
+                    mouse.x = e.clientX;
+                    mouse.y = e.clientY;
+
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+                    raycaster.setFromCamera(mouseVector, existingCamera);
+                    const distance = existingCamera.position.z - 0;
+                    const pos = new THREE.Vector3();
+                    raycaster.ray.at(distance, pos);
+                    mouse.worldX = pos.x;
+                    mouse.worldY = pos.y;
+                });
+
+                // Click to pop
+                document.addEventListener('click', (e) => {
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+                    raycaster.setFromCamera(mouseVector, existingCamera);
+
+                    raycaster.params.Points.threshold = 1.0;
+                    raycaster.params.Line.threshold = 1.0;
+
+                    const meshes = balloons.filter(b => b.mesh && !b.popped && b.mesh.visible).map(b => b.mesh);
+                    const intersects = raycaster.intersectObjects(meshes);
+
+                    if (intersects.length > 0) {
+                        const clickedMesh = intersects[0].object;
+                        const balloon = clickedMesh.userData.balloon;
+                        if (balloon) {
+                            balloon.pop();
+                            return;
+                        }
+                    }
+
+                    const ray = raycaster.ray;
+                    const distance = existingCamera.position.z;
+                    const pos = new THREE.Vector3();
+                    ray.at(distance, pos);
+
+                    let closestBalloon = null;
+                    let closestDist = Infinity;
+
+                    balloons.forEach(balloon => {
+                        if (balloon.mesh && !balloon.popped && balloon.mesh.visible) {
+                            const dist = balloon.position.distanceTo(new THREE.Vector3(pos.x, pos.y, balloon.position.z));
+                            if (dist < 2.5 && dist < closestDist) {
+                                closestBalloon = balloon;
+                                closestDist = dist;
+                            }
+                        }
+                    });
+
+                    if (closestBalloon) {
+                        closestBalloon.pop();
+                    }
+                });
+
+                // Animation loop for balloons
+                function animateBalloons() {
+                    requestAnimationFrame(animateBalloons);
+
+                    balloons.forEach(balloon => {
+                        balloon.update();
+                    });
+
+                    existingRenderer.render(existingScene, existingCamera);
+                }
+
+                setTimeout(() => {
+                    animateBalloons();
+                }, 100);
+            `;
+            document.body.appendChild(balloonScript);
+        }
+
+        // Animation loop for ferro mode
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (currentMode === 'ferro') {
+                // Update ferrofluid interactions
+                updateFerrofluidInteractions();
+
+                // Update all ferrofluids
+                ferrofluids.forEach(ferrofluid => {
+                    updateFerrofluid(ferrofluid);
+                });
+
+                renderer.render(scene, camera);
+            }
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+
+        // Make scene, camera, renderer globally accessible for balloon mode
+        window.scene = scene;
+        window.camera = camera;
+        window.renderer = renderer;
+
+        // Initialize and start ferro mode
+        createMainFerrofluid();
+        createSmallFerrofluids();
+        animate();
+    </script>
+</body>
+</html>
