@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Br'er - A Vice Without Venom</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+
+    <!-- Locomotive Scroll -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-scroll-container>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="nav-logo">Br'er</div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#product">Product</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#market">Market</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Animation Pin -->
+    <section id="home" class="hero-wrapper" data-scroll-section>
+        <div class="hero-pin" data-scroll data-scroll-sticky data-scroll-target="#home">
+            <div class="hero">
+                <div class="hero-3d">
+                    <canvas id="three-canvas"></canvas>
+                </div>
+                <div class="hero-content">
+                     <h1 class="logo">BR'ER</h1>
+                    <p class="tagline">A VICE WITHOUT VENOM</p>
+               <!--      <a href="#contact" class="cta-button">Learn More</a> -->
+                </div>
+            </div>
+        </div>
+        <!-- Spacer to create scroll distance for animation -->
+        <div class="animation-spacer"></div>
+    </section>
+
+    <!-- Product Showcase Section -->
+    <section id="product" class="slide-section" data-scroll-section style="background: #000000;">
+        <div class="slide-content">
+            <h2 class="slide-title" data-scroll data-scroll-speed="1" data-scroll-delay="0.05">PRECISION<br>ENGINEERED</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; margin-top: 60px; max-width: 1000px;">
+                <div style="text-align: center;" data-scroll data-scroll-speed="0.5" data-scroll-delay="0.1">
+                    <img src="./Br_erRender1_4.jpg" alt="Br'er Device Front View" style="width: 100%; max-width: 300px; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); filter: grayscale(0.3);">
+                    <p style="margin-top: 20px; font-size: 1.2rem; color: #999999;">Assembled Device</p>
+                </div>
+                <div style="text-align: center;" data-scroll data-scroll-speed="0.5" data-scroll-delay="0.15">
+                    <img src="./Br_erRender1_1.jpg" alt="Br'er Device Components" style="width: 100%; max-width: 300px; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); filter: grayscale(0.3);">
+                    <p style="margin-top: 20px; font-size: 1.2rem; color: #999999;">Modular Components</p>
+                </div>
+                <div style="text-align: center;" data-scroll data-scroll-speed="0.5" data-scroll-delay="0.2">
+                    <img src="./Screenshot_2025-10-27_at_10_51_06_AM.png" alt="Br'er Cartridge" style="width: 100%; max-width: 300px; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); filter: grayscale(0.3);">
+                    <p style="margin-top: 20px; font-size: 1.2rem; color: #999999;">Replaceable Cartridge</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="slide-section" data-scroll-section>
+        <div class="slide-content">
+            <h2 class="slide-title" data-scroll data-scroll-speed="2">MEET BR'ER</h2>
+            <div class="features-list">
+                <div class="feature-item" data-scroll data-scroll-speed="0.8" data-scroll-delay="0.05">Safe Administration</div>
+                <div class="feature-item" data-scroll data-scroll-speed="0.8" data-scroll-delay="0.1">Caffeine + Vitamins</div>
+                <div class="feature-item" data-scroll data-scroll-speed="0.8" data-scroll-delay="0.15">Natural Buzz - 5HTP</div>
+                <div class="feature-item" data-scroll data-scroll-speed="0.8" data-scroll-delay="0.2">Fun Flavor Options</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Market Section -->
+    <section id="market" class="market-section" data-scroll-section>
+        <div class="market-content">
+            <div class="market-text" data-scroll data-scroll-speed="1.5">
+                <h2 class="slide-title">MARKET<br>OPPORTUNITY</h2>
+            </div>
+            <div class="market-visual">
+                <div class="market-circles">
+                    <div class="circle tam" data-scroll data-scroll-speed="0.5" data-scroll-delay="0.05">
+                        <div class="circle-label">TAM</div>
+                        <div class="circle-value">$6 Billion</div>
+                    </div>
+                    <div class="circle sam" data-scroll data-scroll-speed="0.7" data-scroll-delay="0.1">
+                        <div class="circle-label">SAM</div>
+                        <div class="circle-value">$2 Billion</div>
+                    </div>
+                    <div class="circle som" data-scroll data-scroll-speed="0.9" data-scroll-delay="0.15">
+                        <div class="circle-label">SOM</div>
+                        <div class="circle-value">$50 Million</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact" data-scroll-section>
+        <div class="contact-content">
+            <h2 data-scroll data-scroll-speed="2">BR'ER</h2>
+            <div class="contact-info" data-scroll data-scroll-speed="1" data-scroll-delay="0.05">
+                <p>Killing customers doesn't pay,<br>keeping them healthy does.</p>
+                <p style="margin-top: 3rem;">A healthy first step towards quitting nicotine</p>
+            </div>
+            <div class="contact-info" data-scroll data-scroll-speed="0.5" data-scroll-delay="0.1">
+                <a href="https://breathebrer.com" class="website-link">BREATHEBRER.COM</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Locomotive Scroll Library -->
+    <script src="https://cdn.jsdelivr.net/npm/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="js/main.js"></script>
+</body>
+</html>

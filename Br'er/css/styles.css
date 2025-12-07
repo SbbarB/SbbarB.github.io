@@ -1,0 +1,445 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+html.has-scroll-smooth {
+    overflow: hidden;
+}
+
+html.has-scroll-dragging {
+    user-select: none;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #000000;
+    color: #ffffff;
+    overflow-x: hidden;
+    width: 100%;
+    line-height: 1.2;
+}
+
+/* Hero Section - 3D model centered behind text overlay */
+.hero-wrapper {
+    position: relative;
+    background: #000000;
+}
+
+.hero-pin {
+    position: relative;
+}
+
+.hero {
+    height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #000000;
+}
+
+/* Spacer to create scroll distance for animation to play */
+.animation-spacer {
+    height: 150vh; /* Creates scroll space for animation */
+    background: #000000;
+}
+
+.hero-content {
+    z-index: 10;
+    position: relative;
+    text-align: center;
+    max-width: 100%;
+    padding: 0 60px;
+}
+
+.hero-3d {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.logo {
+    font-size: clamp(6rem, 15vw, 15rem);
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    margin-bottom: 2rem;
+    color: #cccccc;
+    line-height: 0.8;
+    text-transform: uppercase;
+    animation: fadeInUp 1s ease-out forwards;
+    text-shadow: 0 0 20px hsla(210, 41%, 84%, 0.729);
+}
+
+.tagline {
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 300;
+    margin-bottom: 4rem;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 0.5s forwards;
+    line-height: 1.3;
+    color: #999999;
+    text-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+}
+
+.subtitle {
+    font-size: clamp(1.2rem, 3vw, 2.5rem);
+    font-weight: 700;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 1s forwards;
+    letter-spacing: 0.1em;
+    color: #aaaaaa;
+    text-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 20px 50px;
+    background: rgba(106, 127, 143, 0.8);
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 1.5s forwards;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+}
+
+.cta-button:hover {
+    background: rgba(143, 163, 179, 1.0);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(255, 255, 255, 0.4);
+}
+
+/* 3D Canvas */
+#three-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Slide-style sections */
+.slide-section {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    background: #000000;
+    position: relative;
+}
+
+.slide-content {
+    text-align: center;
+    max-width: 1200px;
+}
+
+.slide-title {
+    font-size: clamp(4rem, 10vw, 10rem);
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    margin-bottom: 3rem;
+    color: #cccccc;
+    line-height: 0.8;
+    text-transform: uppercase;
+}
+
+.slide-subtitle {
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 300;
+    margin-bottom: 4rem;
+    color: #999999;
+    line-height: 1.2;
+}
+
+/* Features grid matching slide deck */
+.features-list {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.feature-item {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 400;
+    margin-bottom: 2rem;
+    color: #aaaaaa;
+    padding-left: 2rem;
+    position: relative;
+}
+
+.feature-item::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #8fa3b3;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+/* Market Section - slide deck style */
+.market-section {
+    background: #000000;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.market-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    padding: 0 60px;
+}
+
+.market-text {
+    flex: 1;
+}
+
+.market-visual {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.market-circles {
+    position: relative;
+    width: 400px;
+    height: 400px;
+}
+
+.circle {
+    border: 3px solid #666666;
+    border-radius: 50%;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #aaaaaa;
+    font-weight: 700;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.circle.tam {
+    width: 400px;
+    height: 400px;
+    top: 0;
+    left: 0;
+}
+
+.circle.sam {
+    width: 280px;
+    height: 280px;
+    top: 60px;
+    left: 60px;
+}
+
+.circle.som {
+    width: 160px;
+    height: 160px;
+    top: 120px;
+    left: 120px;
+}
+
+.circle-label {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.circle-value {
+    font-size: 2rem;
+    font-weight: 900;
+}
+
+/* Contact Section */
+.contact {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: #000000;
+}
+
+.contact-content {
+    max-width: 800px;
+}
+
+.contact h2 {
+    font-size: clamp(4rem, 8vw, 8rem);
+    margin-bottom: 3rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.05em;
+    color: #cccccc;
+}
+
+.contact-info {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    margin: 4rem 0;
+    font-weight: 300;
+    color: #999999;
+}
+
+.website-link {
+    color: #8fa3b3;
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+.website-link:hover {
+    color: #b3c4d1;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+
+/* Navigation - minimal */
+.nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 30px 60px;
+    background: transparent;
+    transition: all 0.3s ease;
+    pointer-events: none; /* Allow clicks through nav initially */
+}
+
+.nav * {
+    pointer-events: auto; /* Re-enable clicks on nav content */
+}
+
+.nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #cccccc;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+}
+
+.nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+}
+
+.nav-links a {
+    color: #999999;
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: #8fa3b3;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-content {
+        padding: 20px;
+    }
+
+    .logo {
+        font-size: clamp(4rem, 12vw, 8rem);
+    }
+
+    .tagline {
+        font-size: clamp(1.2rem, 4vw, 2rem);
+    }
+
+    .subtitle {
+        font-size: clamp(1rem, 3vw, 1.8rem);
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .market-content {
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .market-circles {
+        width: 300px;
+        height: 300px;
+    }
+
+    .circle.tam {
+        width: 300px;
+        height: 300px;
+    }
+
+    .circle.sam {
+        width: 210px;
+        height: 210px;
+        top: 45px;
+        left: 45px;
+    }
+
+    .circle.som {
+        width: 120px;
+        height: 120px;
+        top: 90px;
+        left: 90px;
+    }
+}
