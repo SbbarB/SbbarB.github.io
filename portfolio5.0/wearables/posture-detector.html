@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posture Detector - Portfolio</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #6495ED 0%, #4169E1 50%, #000080 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin: 0 0 20px 0;
+            font-weight: 700;
+        }
+
+        .team {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .description {
+            font-size: 20px;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto 40px;
+        }
+
+        .features {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .features h2 {
+            margin-top: 0;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 12px 0;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .features li:last-child {
+            border-bottom: none;
+        }
+
+        .features li::before {
+            content: "✦ ";
+            color: #87CEEB;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #4169E1;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Posture Detector</h1>
+            <div class="team">Team: Keaton, Gage, Roman, Brett</div>
+            <div class="description">
+                Wearable posture monitoring device with real-time feedback. Features TinyCore MCU with integrated accelerometer, Kalman Filter for signal processing, buzzer alert system for posture correction, and continuous tilt angle monitoring.
+            </div>
+        </div>
+
+        <div class="features">
+            <h2>Key Features</h2>
+            <ul>
+                <li>TinyCore MCU with integrated accelerometer for motion sensing</li>
+                <li>Kalman Filter algorithm for accurate signal processing</li>
+                <li>Real-time tilt angle calculation and monitoring</li>
+                <li>Buzzer alert system for immediate posture correction feedback</li>
+                <li>Continuous posture tracking throughout the day</li>
+                <li>Wearable design for comfortable all-day use</li>
+                <li>Low-power operation for extended battery life</li>
+            </ul>
+        </div>
+
+        <div class="button-container">
+            <a href="../index.html" class="back-button">Back to Portfolio</a>
+        </div>
+    </div>
+</body>
+</html>

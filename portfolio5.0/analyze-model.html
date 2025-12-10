@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Analysis</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+        }
+        #output {
+            padding: 20px;
+            white-space: pre-wrap;
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 400px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="output">Analyzing model...</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const output = document.getElementById('output');
+        let log = '';
+
+        function print(msg) {
+            log += msg + '\n';
+            output.textContent = log;
+            console.log(msg);
+        }
+
+        const loader = new GLTFLoader();
+        loader.load('record_player_for_vinyls.glb', (gltf) => {
+            const model = gltf.scene;
+
+            print('=== MODEL ANALYSIS ===\n');
+
+            // Analyze structure
+            const meshes = [];
+            const groups = [];
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    meshes.push(child);
+                } else if (child.type === 'Group' || child.type === 'Object3D') {
+                    groups.push(child);
+                }
+            });
+
+            print(`Total meshes: ${meshes.length}`);
+            print(`Total groups: ${groups.length}\n`);
+
+            // Get bounding box
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            print(`Model bounds:`);
+            print(`  Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`);
+            print(`  Center: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})\n`);
+
+            // Analyze each mesh
+            print('=== MESH DETAILS ===\n');
+
+            meshes.forEach((mesh, index) => {
+                const meshBox = new THREE.Box3().setFromObject(mesh);
+                const meshSize = meshBox.getSize(new THREE.Vector3());
+                const meshCenter = meshBox.getCenter(new THREE.Vector3());
+
+                const worldPos = new THREE.Vector3();
+                mesh.getWorldPosition(worldPos);
+
+                const relativeY = (worldPos.y - box.min.y) / size.y;
+
+                print(`[${index}] ${mesh.name || 'unnamed'}`);
+                print(`    Type: ${mesh.type}`);
+                print(`    Geometry: ${mesh.geometry.type}`);
+                print(`    Vertices: ${mesh.geometry.attributes.position?.count || 0}`);
+                print(`    Size: ${meshSize.x.toFixed(3)} x ${meshSize.y.toFixed(3)} x ${meshSize.z.toFixed(3)}`);
+                print(`    World Pos: (${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)})`);
+                print(`    Relative Y: ${(relativeY * 100).toFixed(1)}%`);
+                print(`    Material: ${mesh.material.name || mesh.material.type}`);
+                if (mesh.material.color) {
+                    print(`    Color: #${mesh.material.color.getHexString()}`);
+                }
+                print('');
+            });
+
+            print('\n=== HIERARCHY ===\n');
+
+            function printHierarchy(obj, depth = 0) {
+                const indent = '  '.repeat(depth);
+                const type = obj.isMesh ? '[MESH]' : obj.type === 'Group' ? '[GROUP]' : `[${obj.type}]`;
+                print(`${indent}${type} ${obj.name || 'unnamed'} (children: ${obj.children.length})`);
+
+                if (depth < 5) {
+                    obj.children.forEach(child => printHierarchy(child, depth + 1));
+                }
+            }
+
+            printHierarchy(model);
+
+        }, undefined, (error) => {
+            print('ERROR: ' + error.message);
+        });
+    </script>
+</body>
+</html>
