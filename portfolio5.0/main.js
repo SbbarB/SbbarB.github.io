@@ -11,7 +11,7 @@ const initialBackgroundColor = new THREE.Color(0xf5f7f8); // Light gray
 const portfolioBackgroundColor = new THREE.Color(0x000000); // Black for spotlighting
 // scene.background = initialBackgroundColor.clone(); // Removed to show body background
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 1000);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 50000);
 camera.position.set(0, 90, 380,);
 
 // Expose THREE.js camera and scene to global scope for wave visualization
@@ -70,6 +70,7 @@ let revealMode = false; // Track if using reveal mode (true) or simple explosion
 let currentRevealLayer = -1; // Track which layer is currently being revealed
 let lastLayerRevealTime = 0; // Track when last layer was revealed
 const layerRevealDelay = 300; // 0.3 seconds between all layers (in milliseconds)
+let bioStateBeforeExplode = null; // Track bio state before entering explode mode
 const revealedLayers = new Set(); // Track which layers have been permanently revealed
 const layerLabels = {}; // Store label DOM elements by layer
 
@@ -123,7 +124,8 @@ const layerColors = {
     '4': 0xcc66ff,   // Creative Technology - Bright Vibrant Lavender Purple (matches vinyl #cc66ff)
     '3': 0x5840ff,   // Art - Purple-Blue (matches vinyl range)
     '2': 0x5840ff,   // Art - Purple-Blue (matches vinyl range)
-    '1': 0x0099ff,   // Writing - Bright Blue (matches vinyl #0099ff)
+    '1': 0x003d99,   // Writing - Bright Blue (matches vinyl #0099ff)
+    '0.5': 0x0099ff, // Startups - Bright Navy Blue
     '0': 0x87ceeb,   // Case walls - Sky Blue (transparent)
     '-1': 0x64b8e0,  // Renders - Light Blue (matches vinyl #64b8e0)
     '-2': 0x64b8e0,  // Renders - Light Blue (matches vinyl #64b8e0)
@@ -133,8 +135,8 @@ const layerColors = {
 // Project categories by layer
 const layerCategories = {
     '-3': 'Wearables',  // Floor
-    '-2': 'Renders',    // PCBs
-    '-1': 'Renders',    // Wires
+    '-2': 'Renders',    // PCBs only
+    '0.5': 'Startups',  // Startups wires (between Writing and Renders)
     '1': 'Writing',
     '2': 'Art',
     '3': 'Art',
@@ -164,7 +166,7 @@ const projectsByCategory = {
         {
             title: 'L-Systems & Generative Design',
             description: 'Exploration of L-Systems (Lindenmayer Systems) for generative design patterns using Grasshopper. This project demonstrates recursive growth patterns and their applications in computational fabrication.',
-            pdf: 'computationalFAB/drive-download-20251209T182043Z-3-001/L1 — L-Systems_.docx',
+            pdf: 'computationalFAB/L1 — L-Systems_.pdf',
             vinylColor: '#ee1111',
             vinylGradient: 'radial-gradient(circle, #ff4444 30%, #ee1111 40%, #dd0000 100%)',
             vinylCenter: '#ff5555',
@@ -178,7 +180,7 @@ const projectsByCategory = {
         {
             title: 'L3 — 3D Printing Projects',
             description: 'Advanced 3D printing projects exploring G-code generation and multi-layer fabrication techniques. Includes single-layer and five-layer printing experiments.',
-            pdf: 'computationalFAB/drive-download-20251209T182043Z-3-001/L3 — Part One.docx',
+            pdf: 'computationalFAB/L3 — Part One.pdf',
             vinylColor: '#dd2222',
             vinylGradient: 'radial-gradient(circle, #ee3333 30%, #dd2222 40%, #cc1111 100%)',
             vinylCenter: '#ff4444',
@@ -193,7 +195,7 @@ const projectsByCategory = {
         {
             title: 'Parametric Slicer',
             description: 'Development of a custom parametric slicer using Grasshopper for 3D printing. This project explores algorithmic approaches to generating optimized slicing strategies.',
-            pdf: 'computationalFAB/drive-download-20251209T182244Z-3-001 2/L2 — Parametric Slicer.docx',
+            pdf: 'computationalFAB/L2 — Parametric Slicer.pdf',
             vinylColor: '#cc3333',
             vinylGradient: 'radial-gradient(circle, #dd4444 30%, #cc3333 40%, #bb2222 100%)',
             vinylCenter: '#ee5555',
@@ -208,7 +210,7 @@ const projectsByCategory = {
         {
             title: 'Lasered — Laser Cutting Project',
             description: 'Computational design project utilizing laser cutting fabrication techniques. Explores precision cutting and material manipulation through digital fabrication.',
-            pdf: 'computationalFAB/drive-download-20251209T182244Z-3-001 2/M2 - _Lasered_.docx',
+            pdf: 'computationalFAB/M2 - _Lasered_.pdf',
             vinylColor: '#bb4444',
             vinylGradient: 'radial-gradient(circle, #cc5555 30%, #bb4444 40%, #aa3333 100%)',
             vinylCenter: '#dd6666',
@@ -222,7 +224,7 @@ const projectsByCategory = {
         {
             title: 'Parametric Furniture',
             description: 'Parametric furniture design using Grasshopper. This project explores computational methods for creating customizable, fabrication-ready furniture designs.',
-            pdf: 'computationalFAB/drive-download-20251209T182244Z-3-001 2/M3 — Parametric Furniture.docx',
+            pdf: 'computationalFAB/M3 — Parametric Furniture.pdf',
             vinylColor: '#aa5555',
             vinylGradient: 'radial-gradient(circle, #bb6666 30%, #aa5555 40%, #994444 100%)',
             vinylCenter: '#cc7777',
@@ -255,8 +257,9 @@ const projectsByCategory = {
             title: 'IDC2 Smart Mailbox',
             description: 'IoT-enabled smart mailbox system with real-time notifications and package tracking capabilities. Demonstrates integration of hardware and software for practical applications.',
             team: 'Brett Rabbiner',
-            pdf: 'Creative Technology/IDC2 Documentation.pdf',
-            video: 'Creative Technology/mailbox.mov',
+            pdf: 'Creative Technology/Copy of IDC2 Documentation.pdf',
+            video: 'Creative Technology/idc2_v1 (720p).mp4',
+            secondVideo: 'Creative Technology/trimmed.mov',
             vinylColor: '#bb55dd',
             vinylGradient: 'radial-gradient(circle, #cc77ee 30%, #bb55dd 40%, #aa44cc 100%)',
             vinylCenter: '#dd88ff',
@@ -288,6 +291,30 @@ const projectsByCategory = {
     ],
     'Development': [
         {
+            title: 'Capstone Render',
+            description: 'An axial-lithography based volumetric additive manufacturing (VAM) 3D printer representing the next major advancement in additive manufacturing technology. This system uses computed tomography principles to cure photopolymer resin in true 3D space, enabling rapid production of complex geometries without traditional layer-by-layer constraints.',
+            team: 'Brett Rabbiner',
+            video: 'Development/Capstone Render.mov',
+            code: 'Development/VAMmotorMount.3dm',
+            code2: 'Development/portfolio3.0.html',
+            images: [
+                'Development/VAM.jpg',
+                'Development/VAM2.jpg',
+                'Development/VAM3.jpg'
+            ],
+            vinylColor: '#770044',
+            vinylGradient: 'radial-gradient(circle, #991166 30%, #770044 40%, #550033 100%)',
+            vinylCenter: '#bb5588',
+            features: [
+                'Volumetric additive manufacturing',
+                'Axial-lithography technology',
+                'True 3D printing without layers',
+                'Advanced photopolymer curing',
+                'Complex geometry capability',
+                'Next-generation manufacturing'
+            ]
+        },
+        {
             title: 'kARt',
             description: '[Description to be added]',
             team: 'Brett Rabbiner',
@@ -312,9 +339,158 @@ const projectsByCategory = {
                 'Machine learning categorization',
                 'Personalized fashion insights'
             ]
+        },
+        {
+            title: 'Brute Force Password Hack',
+            description: 'An interactive web-based demonstration of brute force password cracking techniques. Educational tool showing password security vulnerabilities and the importance of strong password practices.',
+            team: 'Brett Rabbiner',
+            video: 'Development/bruteForcePassHack.html/pashacktrimmed.mov',
+            vinylColor: '#440022',
+            vinylGradient: 'radial-gradient(circle, #661144 30%, #440022 40%, #220011 100%)',
+            vinylCenter: '#883366',
+            features: [
+                'Interactive password cracking simulation',
+                'Real-time brute force demonstration',
+                'Security education tool',
+                'Visual feedback system'
+            ]
+        },
+        {
+            title: 'Ferrofluid to Orbital Cloud',
+            description: 'An interactive Three.js visualization that morphs between ferrofluid simulations and electron orbital clouds. Features smooth transitions between quantum mechanical states (1s, 2px, 2py, 2pz, 3d orbitals) with continuous rotation and particle dynamics.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio/ferroTOcloud.html',
+            vinylColor: '#330011',
+            vinylGradient: 'radial-gradient(circle, #551133 30%, #330011 40%, #110000 100%)',
+            vinylCenter: '#772244',
+            features: [
+                'Ferrofluid to orbital morphing',
+                'Quantum state visualization',
+                'Electron orbital shapes (s, p, d)',
+                'Smooth particle transitions',
+                'Three.js WebGL rendering'
+            ]
+        },
+        {
+            title: 'Portfolio v1.0 - Ferrofluid Balloon',
+            description: 'My first interactive portfolio website featuring a dynamic ferrofluid simulation combined with balloon physics. An experimental exploration of web-based physics engines and particle systems.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio/THISferro-balloon-combined.html',
+            vinylColor: '#220011',
+            vinylGradient: 'radial-gradient(circle, #440022 30%, #220011 40%, #000000 100%)',
+            vinylCenter: '#661133',
+            features: [
+                'Interactive ferrofluid simulation',
+                'Real-time particle physics',
+                'Balloon animation system',
+                'Experimental UI design'
+            ]
+        },
+        {
+            title: 'Portfolio v4.0 - 3D Cabin',
+            description: 'Fourth iteration featuring a 3D cabin model with interactive elements. Explores Three.js capabilities and 3D web rendering techniques.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio4.0/index.html',
+            vinylColor: '#110000',
+            vinylGradient: 'radial-gradient(circle, #220011 30%, #110000 40%, #000000 100%)',
+            vinylCenter: '#441122',
+            features: [
+                '3D cabin model',
+                'Three.js integration',
+                'Interactive 3D navigation',
+                'Custom WebGL effects'
+            ]
+        },
+        {
+            title: 'Bohr Atom Animation',
+            description: 'An interactive visualization of the Bohr atomic model with animated electron orbits. Features dynamic particle systems and orbital mechanics to demonstrate quantum physics concepts.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio/bohrAnimation.html',
+            vinylColor: '#0a0000',
+            vinylGradient: 'radial-gradient(circle, #110000 30%, #0a0000 40%, #000000 100%)',
+            vinylCenter: '#220000',
+            features: [
+                'Animated electron orbits',
+                'Quantum physics visualization',
+                'Interactive particle system',
+                'Educational science tool'
+            ]
+        },
+        {
+            title: 'Black Hole Simulation',
+            description: 'A mesmerizing black hole simulation with gravitational lensing effects and particle dynamics. Explores astrophysics concepts through interactive web visualization.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio/blackhole.html',
+            vinylColor: '#050000',
+            vinylGradient: 'radial-gradient(circle, #0a0000 30%, #050000 40%, #000000 100%)',
+            vinylCenter: '#110000',
+            features: [
+                'Gravitational lensing effects',
+                'Real-time particle dynamics',
+                'Astrophysics simulation',
+                'WebGL rendering'
+            ]
+        },
+        {
+            title: 'Example Basic Portfolios',
+            description: 'A collection of early portfolio website experiments exploring different layouts, animations, and interactive elements. These examples showcase various approaches to web design and front-end development techniques.',
+            team: 'Brett Rabbiner',
+            webpages: [
+                { title: 'Portfolio Design 1', url: '../portfolio/website.html' },
+                { title: 'Portfolio Design 2', url: '../portfolio/SecondWebsite.html' },
+                { title: 'Portfolio Design 3', url: '../portfolio/maybe3.html' }
+            ],
+            vinylColor: '#020000',
+            vinylGradient: 'radial-gradient(circle, #050000 30%, #020000 40%, #000000 100%)',
+            vinylCenter: '#0a0000',
+            features: [
+                'Multiple design approaches',
+                'Layout experimentation',
+                'Interactive animations',
+                'Front-end techniques'
+            ]
+        },
+        {
+            title: 'Portfolio v2.0 - Physics Simulation',
+            description: 'Second iteration of my portfolio with enhanced physics simulations and periodic table visualization. Features improved performance and interactive elements.',
+            team: 'Brett Rabbiner',
+            webpage: '../portfolio2.0/index-enhanced.html',
+            vinylColor: '#000000',
+            vinylGradient: 'radial-gradient(circle, #000000 30%, #000000 40%, #000000 100%)',
+            vinylCenter: '#000000',
+            features: [
+                'Advanced physics engine',
+                'Interactive periodic table',
+                'Enhanced performance',
+                'Responsive design'
+            ]
         }
     ],
-    'Art': [        
+    'Startups': [
+    ],
+    'Art': [
+        {
+            title: 'Artistic Mosaic Generator',
+            description: 'A Python-based algorithmic art tool that transforms images into stunning mosaics using computational techniques. Creates unique artistic interpretations through pixel manipulation and color theory.',
+            team: 'Brett Rabbiner',
+            code: 'Art/artistic_mosaic_generator.py',
+            images: [
+                'Art/mosaic_basic_vibrant.png',
+                'Art/mosaic_circular_rainbow.png',
+                'Art/mosaic_hexagonal_pastel.png',
+                'Art/mosaic_pixelated.png',
+                'Art/mosaic_gradient_mono.png'
+            ],
+            vinylColor: '#8866ff',
+            vinylGradient: 'radial-gradient(circle, #a088ff 30%, #8866ff 40%, #7055dd 100%)',
+            vinylCenter: '#b099ff',
+            features: [
+                'Algorithmic image processing',
+                'Custom mosaic patterns',
+                'Color palette manipulation',
+                'Python-based art generation'
+            ]
+        },
         { title: 'Cardboard Flyer', description: '[Description to be added]', team: 'Brett Rabbiner', image: 'Art/IMG_8248.jpeg', vinylColor: '#6951ff', vinylGradient: 'radial-gradient(circle, #8169ff 30%, #6951ff 40%, #563fdd 100%)', vinylCenter: '#9179ff' },
         { title: 'Water Coloring Carrots', description: '[Description to be added]', team: 'Brett Rabbiner', image: 'Art/IMG_9165.jpeg', vinylColor: '#8a77ff', vinylGradient: 'radial-gradient(circle, #a28eff 30%, #8a77ff 40%, #7766dd 100%)', vinylCenter: '#b39fff' },
         { title: 'Beach Games', description: '[Description to be added]', team: 'Brett Rabbiner', image: 'Art/IMG_6496.jpeg', vinylColor: '#4829ff', vinylGradient: 'radial-gradient(circle, #603dff 30%, #4829ff 40%, #3818cc 100%)', vinylCenter: '#7855ff' },
@@ -329,11 +505,27 @@ const projectsByCategory = {
     ],
     'Writing': [
         {
+            title: 'NeuroDesign Final Report',
+            description: 'A comprehensive research paper exploring the intersection of neuroscience and design principles, examining how neurological insights can inform and enhance design processes and outcomes.',
+            team: 'Brett Rabbiner, Nick McConnell — May 1, 2025',
+            vinylColor: '#003d99',
+            vinylGradient: 'radial-gradient(circle, #0052cc 30%, #003d99 40%, #002d77 100%)',
+            vinylCenter: '#0066ff',
+            pdf: 'Writing/NeuroDesign Final Report (1).pdf',
+            features: [
+                'Co-authored by Brett Rabbiner and Nick McConnell',
+                'Neuroscience and design integration',
+                'Research-based analysis',
+                'Design methodology exploration',
+                'Cognitive design principles'
+            ]
+        },
+        {
             title: 'Balancing Around the Bends',
             description: 'A creative writing piece exploring balance and movement through narrative.',
-            vinylColor: '#0099ff',
-            vinylGradient: 'radial-gradient(circle, #22aaff 30%, #0099ff 40%, #0077dd 100%)',
-            vinylCenter: '#44bbff',
+            vinylColor: '#0047b3',
+            vinylGradient: 'radial-gradient(circle, #0059e6 30%, #0047b3 40%, #003580 100%)',
+            vinylCenter: '#0070ff',
             pdf: 'Writing/Balancing Around the Bends.pdf',
             features: [
                 'Creative narrative',
@@ -345,9 +537,9 @@ const projectsByCategory = {
         {
             title: 'Who Is Your Perspective Pointed At?',
             description: 'An exploration of perspective, perception, and point of view in creative writing.',
-            vinylColor: '#1188ee',
-            vinylGradient: 'radial-gradient(circle, #2299ff 30%, #1188ee 40%, #0066cc 100%)',
-            vinylCenter: '#33aaff',
+            vinylColor: '#005299',
+            vinylGradient: 'radial-gradient(circle, #0066cc 30%, #005299 40%, #004080 100%)',
+            vinylCenter: '#0077dd',
             pdf: 'Writing/Who Is Your Perspective Pointed At_.pdf',
             features: [
                 'Perspective analysis',
@@ -380,7 +572,7 @@ const projectsByCategory = {
             title: 'Br\'er Prototypes',
             description: '[Description to be added]',
             team: 'Brett Rabbiner',
-            images: ['Renders/Br\'er Prototypes/BCO.6904e923-e251-4e4a-a0dc-ca70eea43c40.png', 'Renders/Br\'er Prototypes/BCO.e0bfe833-cb86-427f-9ee3-066730b5766f.png', 'Renders/Br\'er Prototypes/Br\'erRender1.1.jpg', 'Renders/Br\'er Prototypes/Br\'erRender1.2.jpg', 'Renders/Br\'er Prototypes/Br\'erRender1.5.jpg', 'Renders/Br\'er Prototypes/PNG image.png'],
+            images: ['Renders/Br\'er Prototypes/BCO.6904e923-e251-4e4a-a0dc-ca70eea43c40.png', 'Renders/Br\'er Prototypes/BCO.e0bfe833-cb86-427f-9ee3-066730b5766f.png', 'Renders/Br\'er Prototypes/Br\'erRender1.1.jpg', 'Renders/Br\'er Prototypes/Br\'erRender1.2.jpg', 'Renders/Br\'er Prototypes/Br\'erRender1.5.jpg', 'Renders/Br\'er Prototypes/PNG image.png', 'Renders/Br\'er Prototypes/uuid=14DDE15E-C58C-499E-AF97-04AF3BE080DF&code=001&library=1&type=1&mode=2&loc=true&cap=true.jpeg', 'Renders/Br\'er Prototypes/uuid=5135A710-5048-445C-B19A-86410C2929FA&code=001&library=1&type=1&mode=2&loc=true&cap=true.jpeg', 'Renders/Br\'er Prototypes/uuid=7E3C624A-E416-4BE2-AF4D-117EBD1D129D&code=001&library=1&type=1&mode=2&loc=true&cap=true.jpeg', 'Renders/Br\'er Prototypes/uuid=9C3D1068-59CB-40D6-9B70-E48F276A7EEB&code=001&library=1&type=1&mode=2&loc=true&cap=true.jpeg'],
             vinylColor: '#64b8e0',
             vinylGradient: 'radial-gradient(circle, #7bc8ea 30%, #64b8e0 40%, #50a4cd 100%)',
             vinylCenter: '#92d8f2'
@@ -402,6 +594,41 @@ const projectsByCategory = {
             vinylColor: '#92d8f5',
             vinylGradient: 'radial-gradient(circle, #a9e5ff 30%, #92d8f5 40%, #7ec8e0 100%)',
             vinylCenter: '#b8eaff'
+        }
+    ],
+    'Startups': [
+        {
+            title: 'Br\'er',
+            description: 'A revolutionary startup focused on innovative solutions. Explore our investor deck and pitch slides to learn more about our vision and business strategy.',
+            team: 'Brett Rabbiner (CEO/CTO), Reagan Stiteler (CFO), Nitin Addanki (CSO/COO), Kiara Blacher (CMO)',
+            video: 'Startups/Br\'er Pitch.mov',
+            pdf: 'Startups/BR\'ER INVESTOR DECK.pdf',
+            pdf2: 'Startups/BR\'ER FINAL INVESTOR PITCH SLIDES.pdf',
+            vinylColor: '#0077cc',
+            vinylGradient: 'radial-gradient(circle, #1188dd 30%, #0077cc 40%, #0066bb 100%)',
+            vinylCenter: '#2299ee',
+            features: [
+                'Pitch Video',
+                'Investor Deck PDF',
+                'Final Pitch Slides PDF',
+                'Business strategy documentation',
+                'Vision and roadmap'
+            ]
+        },
+        {
+            title: 'PillPal',
+            description: 'An innovative medication management solution designed to improve healthcare outcomes and patient adherence.',
+            team: 'Brett Rabbiner',
+            video: 'Startups/pillpal_final_video_v1 (720p).mp4',
+            vinylColor: '#0099ff',
+            vinylGradient: 'radial-gradient(circle, #22aaff 30%, #0099ff 40%, #0077dd 100%)',
+            vinylCenter: '#44bbff',
+            features: [
+                'Smart medication tracking',
+                'User-friendly interface',
+                'Healthcare integration',
+                'Adherence monitoring'
+            ]
         }
     ],
     'Wearables': [
@@ -1372,13 +1599,13 @@ loader.load('record_player_for_vinyls.glb', (gltf) => {
         const wire = createWire(config.start, config.end, config.color);
         scene.add(wire);
 
-        // Wires are part of Renders category with lavender purple color
+        // These wires are the Startups category
         components.push({
             mesh: wire,
             parent: null,
-            order: -1, // Wires layer (separate from PCBs at -2)
+            order: -1, // Wires layer (original position)
             name: `Wire ${index + 1}`,
-            category: 'Renders', // Wires are Renders
+            category: 'Startups',
             baseWorldPos: wire.position.clone(),
             baseWorldQuat: wire.quaternion.clone(),
             baseWorldScale: new THREE.Vector3(1, 1, 1),
@@ -1386,7 +1613,7 @@ loader.load('record_player_for_vinyls.glb', (gltf) => {
             baseLocalQuat: wire.quaternion.clone(),
             baseLocalScale: new THREE.Vector3(1, 1, 1),
             originalColor: config.color,
-            portfolioColor: layerColors['-1'] // Lavender purple
+            portfolioColor: layerColors['0.5'] // Bright navy blue
         });
     });
 
@@ -1457,7 +1684,8 @@ function createLayerLabels() {
 
 // Handle clicks on 3D components
 function onComponentClick(event) {
-    if (!isExploded) return; // Only allow clicks when exploded
+    // Only allow clicks when exploded AND in reveal mode (not in Explode Anatomy mode)
+    if (!isExploded || !revealMode) return;
 
     // Calculate mouse position in normalized device coordinates (-1 to +1)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -1713,30 +1941,165 @@ function showProjectDetail(project) {
         const isDoc = project.pdf.toLowerCase().endsWith('.doc');
 
         if (isDocx || isDoc) {
-            // For Word documents, use Google Docs viewer for inline display
-            const fullUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/' + project.pdf;
+            // For Word documents, show download option (browsers can't embed DOCX)
             html += `
-                <div style="margin-bottom: 30px;">
-                    <h2 style="margin-bottom: 15px;">Documentation</h2>
-                    <iframe src="https://docs.google.com/gview?url=${encodeURIComponent(fullUrl)}&embedded=true"
-                            style="width: 100%; height: 800px; border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
-                    </iframe>
-                    <p style="margin-top: 10px; color: rgba(255, 255, 255, 0.6); font-size: 14px;">
-                        <a href="${project.pdf}" download style="color: rgba(255, 255, 255, 0.8); text-decoration: underline;">
-                            Download original file
-                        </a>
+                <div style="margin-bottom: 30px; text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                    <h2 style="margin-bottom: 20px;">📄 Project Documentation</h2>
+                    <p style="margin-bottom: 20px; color: rgba(255, 255, 255, 0.7);">
+                        Full project documentation is available for download
                     </p>
+                    <a href="${project.pdf}" download style="
+                        display: inline-block;
+                        padding: 15px 40px;
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        border-radius: 8px;
+                        color: #fff;
+                        text-decoration: none;
+                        font-weight: 600;
+                        font-size: 16px;
+                        transition: all 0.3s ease;
+                        cursor: pointer;
+                    " onmouseover="this.style.background='linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15))'; this.style.borderColor='rgba(255, 255, 255, 0.5)'; this.style.transform='translateY(-2px)';"
+                       onmouseout="this.style.background='linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05))'; this.style.borderColor='rgba(255, 255, 255, 0.3)'; this.style.transform='translateY(0)';">
+                        Download Documentation
+                    </a>
                 </div>
             `;
         } else {
-            // For PDFs, embed as before
+            // For PDFs, use iframe (with or without download link depending on pdf2)
+            const showDownload = !project.pdf2; // Don't show download if there's a second PDF
             html += `
                 <div style="margin-bottom: 30px;">
-                    <h2 style="margin-bottom: 15px;">Documentation</h2>
-                    <embed src="${project.pdf}" type="application/pdf" width="100%" height="800px" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);" />
+                    <h2 style="margin-bottom: 15px;">Investor Deck</h2>
+                    <iframe src="${project.pdf}" width="100%" height="800px" style="border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); background: white;"></iframe>
+                    ${showDownload ? `
+                        <div style="margin-top: 15px; text-align: center;">
+                            <a href="${project.pdf}" download style="
+                                display: inline-block;
+                                padding: 12px 30px;
+                                background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+                                border: 2px solid rgba(255, 255, 255, 0.3);
+                                border-radius: 8px;
+                                color: #fff;
+                                text-decoration: none;
+                                font-weight: 600;
+                                font-size: 14px;
+                                transition: all 0.3s ease;
+                            ">
+                                📥 Download PDF
+                            </a>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
+    }
+
+    // Add second PDF if available (pdf2)
+    if (project.pdf2) {
+        html += `
+            <div style="margin-bottom: 30px;">
+                <h2 style="margin-bottom: 15px;">Pitch Deck</h2>
+                <iframe src="${project.pdf2}" width="100%" height="800px" style="border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); background: white;"></iframe>
+            </div>
+        `;
+    }
+
+    // Add webpage if available
+    if (project.webpage) {
+        const webpageTitle = project.pdf2 ? 'Video Preview' : 'Interactive Demo';
+        // Use responsive embed for video preview, standard iframe for interactive demos
+        if (project.pdf2) {
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <h2 style="margin-bottom: 15px;">${webpageTitle}</h2>
+                    <div style="max-width: 640px; margin: 0 auto;">
+                        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+                            <iframe src="${project.webpage}" width="640" height="360" frameborder="0" scrolling="no" allowfullscreen title="Br'er.MP4" style="border:none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; height: 100%; max-width: 100%;"></iframe>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <h2 style="margin-bottom: 15px;">${webpageTitle}</h2>
+                    <iframe src="${project.webpage}" style="width: 100%; height: 800px; border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);" allowfullscreen></iframe>
+                </div>
+            `;
+        }
+    }
+
+    // Add multiple webpages if available
+    if (project.webpages && project.webpages.length > 0) {
+        project.webpages.forEach((webpage, index) => {
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <h2 style="margin-bottom: 15px;">${webpage.title}</h2>
+                    <iframe src="${webpage.url}" style="width: 100%; height: 800px; border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);" allowfullscreen></iframe>
+                </div>
+            `;
+        });
+    }
+
+    // Add code if available
+    if (project.code) {
+        html += `
+            <div style="margin-bottom: 30px;">
+                <h2 style="margin-bottom: 15px; color: #333;">Downloads</h2>
+                <a href="${project.code}" download style="
+                    display: inline-block;
+                    padding: 15px 40px;
+                    background: linear-gradient(135deg, rgba(135, 179, 232, 0.2), rgba(93, 74, 127, 0.2));
+                    border: 2px solid rgba(135, 179, 232, 0.5);
+                    border-radius: 8px;
+                    color: #333;
+                    text-decoration: none;
+                    font-weight: 600;
+                    font-size: 16px;
+                    transition: all 0.3s ease;
+                    cursor: pointer;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    margin-right: 15px;
+                " onmouseover="this.style.background='linear-gradient(135deg, rgba(135, 179, 232, 0.4), rgba(93, 74, 127, 0.4))'; this.style.borderColor='rgba(135, 179, 232, 0.8)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(135, 179, 232, 0.3)';"
+                   onmouseout="this.style.background='linear-gradient(135deg, rgba(135, 179, 232, 0.2), rgba(93, 74, 127, 0.2))'; this.style.borderColor='rgba(135, 179, 232, 0.5)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';">
+                    📥 Download CAD File
+                </a>
+                ${project.code2 ? `
+                    <a href="${project.code2}" download style="
+                        display: inline-block;
+                        padding: 15px 40px;
+                        background: linear-gradient(135deg, rgba(135, 179, 232, 0.2), rgba(93, 74, 127, 0.2));
+                        border: 2px solid rgba(135, 179, 232, 0.5);
+                        border-radius: 8px;
+                        color: #333;
+                        text-decoration: none;
+                        font-weight: 600;
+                        font-size: 16px;
+                        transition: all 0.3s ease;
+                        cursor: pointer;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    " onmouseover="this.style.background='linear-gradient(135deg, rgba(135, 179, 232, 0.4), rgba(93, 74, 127, 0.4))'; this.style.borderColor='rgba(135, 179, 232, 0.8)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(135, 179, 232, 0.3)';"
+                       onmouseout="this.style.background='linear-gradient(135deg, rgba(135, 179, 232, 0.2), rgba(93, 74, 127, 0.2))'; this.style.borderColor='rgba(135, 179, 232, 0.5)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';">
+                        📥 Download Web-Animation File
+                    </a>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // Add second video if available (displayed after documentation)
+    if (project.secondVideo) {
+        html += `
+            <div style="margin-bottom: 30px;">
+                <h2 style="margin-bottom: 15px;">Additional Video</h2>
+                <video controls muted loop style="width: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
+                    <source src="${project.secondVideo}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        `;
     }
 
     // Add features if available
@@ -1758,6 +2121,16 @@ function showProjectDetail(project) {
 // Close project detail overlay
 document.getElementById('close-project').addEventListener('click', () => {
     document.getElementById('project-detail-overlay').style.display = 'none';
+});
+
+// Info button - show info overlay
+document.getElementById('infoButton').addEventListener('click', () => {
+    document.getElementById('info-overlay').style.display = 'flex';
+});
+
+// Close info overlay
+document.getElementById('close-info').addEventListener('click', () => {
+    document.getElementById('info-overlay').style.display = 'none';
 });
 
 // Close project overlay when clicking outside the container
@@ -1850,7 +2223,12 @@ function updateLabels() {
 
         // Position label to the right of the layer
         const labelX = x + 250;
-        const labelY = y;
+        let labelY = y;
+
+        // Add extra offset for Wearables to prevent overlap with Startups
+        if (category === 'Wearables') {
+            labelY += 30;
+        }
 
         label.style.left = labelX + 'px';
         label.style.top = labelY + 'px';
@@ -1859,7 +2237,7 @@ function updateLabels() {
         // Draw line from layer center to label
         const lineLength = labelX - x - 20;
         line.style.left = (x + 20) + 'px';
-        line.style.top = y + 'px';
+        line.style.top = labelY + 'px'; // Use labelY to match the label position
         line.style.width = lineLength + 'px';
     });
 }
@@ -1877,16 +2255,22 @@ document.getElementById('projectButton').addEventListener('click', () => {
     const button = document.getElementById('projectButton');
 
     if (isExploded) {
+        // Save current bio state before entering collection
+        bioStateBeforeExplode = getCurrentBioState();
         button.classList.add('active');
         animateCameraToFront();
         hideBioCard();
-        // Hide reopen bio button during collection
-        document.getElementById('reopen-bio').classList.remove('visible');
+        // Hide simple bio and noise button during collection
+        const simpleBio = document.getElementById('simple-bio');
+        const noiseBtn = document.getElementById('noise-button');
+        if (simpleBio) simpleBio.style.display = 'none';
+        if (noiseBtn) noiseBtn.style.display = 'none';
         // Let the sequential reveal logic handle layer reveals
     } else {
         button.classList.remove('active');
         animateCameraToClose();
-        showBioCard();
+        // Restore bio to state before entering collection
+        restoreBioState(bioStateBeforeExplode);
     }
 });
 
@@ -1903,13 +2287,17 @@ document.getElementById('explodeButton').addEventListener('click', () => {
     const button = document.getElementById('explodeButton');
 
     if (isExploded) {
+        // Save current bio state before entering explode anatomy
+        bioStateBeforeExplode = getCurrentBioState();
         button.classList.add('active');
         animateCameraToFront();
+        // Force mute state in explode anatomy mode
         hideBioCard();
     } else {
         button.classList.remove('active');
         animateCameraToClose();
-        showBioCard();
+        // Restore bio to state before entering explode anatomy
+        restoreBioState(bioStateBeforeExplode);
     }
 });
 
@@ -2054,39 +2442,76 @@ function createSpiralText() {
 // Bio card functionality
 function showBioCard() {
     const bioCard = document.getElementById('bio-card');
-    const reopenBtn = document.getElementById('reopen-bio');
+    const simpleBio = document.getElementById('simple-bio');
+    const noiseBtn = document.getElementById('noise-button');
+
+    // Hide simple bio and noise button
+    if (simpleBio) simpleBio.style.display = 'none';
+    if (noiseBtn) noiseBtn.style.display = 'none';
+
     // Show all name boxes
-    document.querySelector('.name-box').style.display = 'flex';
-    document.querySelectorAll('.bg-name-box').forEach(box => {
+    const nameBox = document.querySelector('.name-box');
+    const bgNameBoxes = document.querySelectorAll('.bg-name-box');
+
+    nameBox.style.display = 'flex';
+    bgNameBoxes.forEach((box) => {
         box.style.display = 'flex';
     });
-    // Add visible class after a brief delay to allow the reassembly to be noticeable
-    setTimeout(() => {
-        bioCard.classList.add('visible');
-        reopenBtn.classList.remove('visible');
-        createSpiralText();
-        // HIDE ferro animation when bio is shown (reversed logic)
-        if (window.hideFerroAnimation) window.hideFerroAnimation();
-    }, 200);
+
+    // Show bio card
+    bioCard.classList.add('visible');
+    createSpiralText();
+    // HIDE ferro animation when bio is shown
+    if (window.hideFerroAnimation) window.hideFerroAnimation();
 }
 
 function hideBioCard() {
     const bioCard = document.getElementById('bio-card');
-    const reopenBtn = document.getElementById('reopen-bio');
+    const simpleBio = document.getElementById('simple-bio');
+    const noiseBtn = document.getElementById('noise-button');
+
+    // Hide bio card
     bioCard.classList.remove('visible');
+
     // Hide all name boxes
-    document.querySelector('.name-box').style.display = 'none';
-    document.querySelectorAll('.bg-name-box').forEach(box => {
+    const nameBox = document.querySelector('.name-box');
+    const bgNameBoxes = document.querySelectorAll('.bg-name-box');
+
+    nameBox.style.display = 'none';
+    bgNameBoxes.forEach((box) => {
         box.style.display = 'none';
     });
-    // SHOW ferro animation when bio is hidden (reversed logic)
-    // And respawn new ferro balls
+
+    // Show simple bio text and noise button when bio card is hidden (unless in collection mode)
+    if (simpleBio && !revealMode) {
+        const bioParagraph = simpleBio.querySelector('.bio-paragraph');
+        if (bioParagraph) {
+            bioParagraph.textContent = "I am an ambitious, organized Creative Technology Design Engineer with a passion for innovation and creativity. I believe to think critically is to solve critical problems, recognizing patterns and drawing connections to achieve optimal results. I am a positive, open-minded, and results-driven individual who understands the importance of effective communication, collaboration, and flexibility within a successful, professional environment. Entrepreneurially-minded, I find common goals provide necessary direction and unitary cohesion, while creativity and constant iteration—the appropriate response to failure—are intrinsic components of success.";
+        }
+        simpleBio.style.display = 'block';
+    }
+    if (noiseBtn && !revealMode) {
+        noiseBtn.style.display = 'block';
+    }
+
+    // SHOW ferro animation when bio is hidden
     if (window.showFerroAnimation) window.showFerroAnimation();
     if (window.respawnFerroBalls) window.respawnFerroBalls();
-    // Show reopen button after bio card is hidden
-    setTimeout(() => {
-        reopenBtn.classList.add('visible');
-    }, 400);
+}
+
+// Helper to check current bio state
+function getCurrentBioState() {
+    const bioCard = document.getElementById('bio-card');
+    return bioCard.classList.contains('visible') ? 'noise' : 'mute';
+}
+
+// Helper to restore bio state
+function restoreBioState(state) {
+    if (state === 'noise') {
+        showBioCard();
+    } else {
+        hideBioCard();
+    }
 }
 
 // Close button for bio card
@@ -2095,8 +2520,8 @@ document.getElementById('bio-close').addEventListener('click', (e) => {
     hideBioCard();
 });
 
-// Reopen button for bio card
-document.getElementById('reopen-bio').addEventListener('click', (e) => {
+// Noise button to show bio card
+document.getElementById('noise-button').addEventListener('click', (e) => {
     e.stopPropagation();
     // Don't allow bio to open during collection/reveal mode
     if (revealMode) return;
@@ -2548,9 +2973,10 @@ window.addEventListener('resize', () => {
 const viewcube = document.getElementById('viewcube');
 const cubeFaces = document.querySelectorAll('.cube-face');
 
-// Camera view positions for each face (adjusted to show entire record player)
-const cameraViews = {
-    front: { position: new THREE.Vector3(0, 90, 380), rotation: { x: 0, y: 0 } }, // Matches initial view
+// Camera view positions for each face
+// Collapsed state positions (close view)
+const cameraViewsCollapsed = {
+    front: { position: new THREE.Vector3(0, 90, 380), rotation: { x: 0, y: 0 } },
     back: { position: new THREE.Vector3(0, 90, -380), rotation: { x: 0, y: Math.PI } },
     right: { position: new THREE.Vector3(380, 90, 0), rotation: { x: 0, y: Math.PI / 2 } },
     left: { position: new THREE.Vector3(-380, 90, 0), rotation: { x: 0, y: -Math.PI / 2 } },
@@ -2558,11 +2984,23 @@ const cameraViews = {
     bottom: { position: new THREE.Vector3(0, -350, 0), rotation: { x: Math.PI / 2, y: 0 } }
 };
 
+// Exploded state positions (farther out to show entire anatomy)
+const cameraViewsExploded = {
+    front: { position: new THREE.Vector3(0, 400, 1200), rotation: { x: 0, y: 0 } },
+    back: { position: new THREE.Vector3(0, 400, -1200), rotation: { x: 0, y: Math.PI } },
+    right: { position: new THREE.Vector3(1200, 400, 0), rotation: { x: 0, y: Math.PI / 2 } },
+    left: { position: new THREE.Vector3(-1200, 400, 0), rotation: { x: 0, y: -Math.PI / 2 } },
+    top: { position: new THREE.Vector3(0, 1400, 0), rotation: { x: -Math.PI / 2, y: 0 } },
+    bottom: { position: new THREE.Vector3(0, -600, 0), rotation: { x: Math.PI / 2, y: 0 } }
+};
+
 // Add click handlers to viewcube faces
 let isAnimatingCamera = false;
 cubeFaces.forEach(face => {
     face.addEventListener('click', () => {
         const view = face.dataset.view;
+        // Use exploded camera positions if model is exploded, otherwise use collapsed positions
+        const cameraViews = isExploded ? cameraViewsExploded : cameraViewsCollapsed;
         const targetView = cameraViews[view];
 
         if (targetView && !isAnimatingCamera) {
