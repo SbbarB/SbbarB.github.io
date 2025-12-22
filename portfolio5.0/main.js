@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
 // ========================================
 // MAIN RECORD PLAYER SCENE
@@ -12,7 +14,7 @@ const portfolioBackgroundColor = new THREE.Color(0x000000); // Black for spotlig
 // scene.background = initialBackgroundColor.clone(); // Removed to show body background
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 50000);
-camera.position.set(0, 90, 380,);
+camera.position.set(0, 90, 380);
 
 // Expose THREE.js camera and scene to global scope for wave visualization
 window.threeCamera = camera;
@@ -275,6 +277,7 @@ const projectsByCategory = {
             title: 'Water Wheel (Hacking the Apocalypse)',
             description: 'Water wheel power generation system designed for post-apocalyptic scenarios. Features custom alternator and 3D-printed components for modular power generation.',
             team: 'Austin Emfield, Brett Rabbiner, Ryan Venturi',
+            video: 'https://app.criticalmention.com/app/#clip/view/3deecafd-d8ad-40da-a3b9-44ac7d96e418?token=c25355f2-d53f-467b-92b3-ec4bfdb9af15',
             pdf: 'Creative Technology/Hacking the Apocalypse (1).pdf',
             vinylColor: '#dd77ff',
             vinylGradient: 'radial-gradient(circle, #ee99ff 30%, #dd77ff 40%, #cc66ee 100%)',
@@ -316,8 +319,8 @@ const projectsByCategory = {
         },
         {
             title: 'kARt',
-            description: '[Description to be added]',
-            team: 'Brett Rabbiner',
+            description: 'AR racing game using USDZ models and ARKit. Players can place and race virtual go-karts in their physical environment.',
+            team: 'Brett Rabbiner and Elizabeth Saunders',
             pdf: 'Development/kARt.pdf',
             video: 'Development/kARt demo video.MOV',
             vinylColor: '#660033',
@@ -327,7 +330,7 @@ const projectsByCategory = {
         {
             title: 'Clueless Closet',
             description: 'An AI-powered virtual wardrobe assistant that helps users organize, style, and plan outfits using computer vision and machine learning. The app provides personalized fashion recommendations and outfit suggestions based on weather, occasion, and personal style preferences.',
-            team: 'Brett Rabbiner',
+            team: 'Brett Rabbiner and Elizabeth Saunders',
             pdf: 'Development/Clueless Closet.pdf',
             vinylColor: '#550028',
             vinylGradient: 'radial-gradient(circle, #771144 30%, #550028 40%, #330011 100%)',
@@ -738,6 +741,7 @@ let loadingProgress = 0;
 let loadingStartTime = 0;
 let currentProjectUrl = null; // Store the URL to navigate to
 let currentProject = null; // Store current project data
+let currentCategory = null; // Store current project category
 let vinylDescentProgress = 0; // Track vinyl descending onto platter
 let lidClosingProgress = 0; // Track lid closing
 let vinylTargetY = 52; // Target Y position for vinyl (will be calculated based on platter)
@@ -1221,12 +1225,19 @@ loader.load('record_player_for_vinyls.glb', (gltf) => {
             if (child.name === 'Cube_TapeRecorder_0' || child.name === 'Cube006_TapeRecorder_0' ||
                 (floorMesh && child.name === floorMesh.name)) {
                 child.material = child.material.clone();
+                // Preserve texture map if it exists (for wood texture on floor)
+                const originalMap = child.material.map;
                 child.material.color.setHex(0xffffff);
                 child.material.opacity = 0.5; // Slightly more transparent
                 child.material.transparent = true;
                 child.material.roughness = 0.05;
                 child.material.metalness = 0.0;
                 child.material.side = THREE.DoubleSide; // Render both sides to fix glitching
+                // Restore texture map and ensure it needs update
+                if (originalMap) {
+                    child.material.map = originalMap;
+                    child.material.needsUpdate = true;
+                }
             }
 
             // Get category info
@@ -1727,6 +1738,7 @@ function loadProject(project, category) {
 
     // Store project data for display after loading
     currentProject = project;
+    currentCategory = category;
 
     // Start loading sequence
     isLoadingProject = true;
@@ -1897,7 +1909,7 @@ document.getElementById('vinyl-overlay').addEventListener('click', (e) => {
 });
 
 // Show project detail overlay
-function showProjectDetail(project) {
+function showProjectDetail(project, category) {
     const overlay = document.getElementById('project-detail-overlay');
     const content = document.getElementById('project-content');
 
@@ -1927,12 +1939,25 @@ function showProjectDetail(project) {
 
     // Add video if available
     if (project.video) {
-        html += `
-            <video controls autoplay muted loop style="margin-bottom: 30px;">
-                <source src="${project.video}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-        `;
+        // Check if video is an external URL (like Critical Mention) or local file
+        const isExternalVideo = project.video.startsWith('http://') || project.video.startsWith('https://');
+
+        if (isExternalVideo) {
+            // Use iframe for external videos
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <iframe src="${project.video}" width="100%" height="500px" style="border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);" allowfullscreen></iframe>
+                </div>
+            `;
+        } else {
+            // Use video tag for local files
+            html += `
+                <video controls autoplay muted loop style="margin-bottom: 30px;">
+                    <source src="${project.video}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            `;
+        }
     }
 
     // Add PDF if available
@@ -1969,9 +1994,11 @@ function showProjectDetail(project) {
         } else {
             // For PDFs, use iframe (with or without download link depending on pdf2)
             const showDownload = !project.pdf2; // Don't show download if there's a second PDF
+            // Determine the PDF label based on category
+            const pdfLabel = (category === 'Comp Fab') ? 'Documentation' : 'Documentation';
             html += `
                 <div style="margin-bottom: 30px;">
-                    <h2 style="margin-bottom: 15px;">Investor Deck</h2>
+                    <h2 style="margin-bottom: 15px;">${pdfLabel}</h2>
                     <iframe src="${project.pdf}" width="100%" height="800px" style="border: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); background: white;"></iframe>
                     ${showDownload ? `
                         <div style="margin-top: 15px; text-align: center;">
@@ -2340,13 +2367,13 @@ function animateCameraToFront() {
 }
 
 function animateCameraToClose() {
-    // Animate camera to closer view of reassembled model
+    // Animate camera back to initial load position
     const startPos = camera.position.clone();
     const startTarget = controls.target.clone();
 
-    // Zoom in to show full model with buffer space around it
-    const endPos = new THREE.Vector3(0, 70, 280); // Closer but with buffer
-    const endTarget = new THREE.Vector3(0, 40, 0); // Look at center of model
+    // Return to exact initial camera position and target
+    const endPos = new THREE.Vector3(0, 90, 380); // Initial camera position
+    const endTarget = new THREE.Vector3(0, 40, 0); // Initial look-at target
 
     let progress = 0;
     const duration = 1500; // 1.5 seconds
@@ -2439,6 +2466,203 @@ function createSpiralText() {
     });
 }
 
+// Noise text wave animation using Three.js with 3D text
+let noiseTextSprites = [];
+let noiseAnimationActive = false;
+const nameText = "  RABBINER  BRETT";
+let fontLoader = null;
+let loadedFont = null;
+
+// Create 3D text mesh for each letter
+function create3DTextMesh(character) {
+    // If we have a loaded font and TextGeometry is available, use it for true 3D text
+    if (loadedFont && typeof TextGeometry !== 'undefined') {
+        try {
+            const textGeometry = new TextGeometry(character, {
+                font: loadedFont,
+                size: 8,
+                height: 2, // Depth/extrusion
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.3,
+                bevelSize: 0.2,
+                bevelSegments: 5
+            });
+
+            textGeometry.center();
+
+            // Create black material
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x000000, // Black
+                metalness: 0.0,
+                roughness: 0.7,
+                transparent: true,
+                opacity: 1.0
+            });
+
+            const mesh = new THREE.Mesh(textGeometry, material);
+            return mesh;
+        } catch (error) {
+            console.log('TextGeometry failed, using sprite fallback:', error);
+            return createEnhancedTextSprite(character);
+        }
+    } else {
+        // Fallback to enhanced sprite if font isn't loaded yet or TextGeometry unavailable
+        return createEnhancedTextSprite(character);
+    }
+}
+
+// Enhanced text sprite with better visuals
+function createEnhancedTextSprite(character) {
+    const canvas = document.createElement('canvas');
+    const size = 128; // Higher resolution
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Create black text
+    ctx.fillStyle = 'rgba(0, 0, 0, 1.0)';
+    ctx.font = 'bold 96px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(character, size/2, size/2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true
+    });
+
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(10, 10, 1);
+    return sprite;
+}
+
+// Load font for 3D text
+function loadFont() {
+    fontLoader = new FontLoader();
+    fontLoader.load(
+        'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json',
+        (font) => {
+            loadedFont = font;
+            console.log('Font loaded for 3D text');
+        },
+        undefined,
+        (error) => {
+            console.log('Font loading failed, using sprite fallback:', error);
+        }
+    );
+}
+
+// Call font loader on init
+loadFont();
+
+function createNoiseTextSystem() {
+    // Each ring is ONE letter - rings spell out "BRETT RABBINER"
+    const textLength = nameText.length; // 14 characters
+    const particlesPerRing = 50; // Copies of each letter around ring
+
+    noiseTextSprites = [];
+
+    for (let ring = 0; ring < textLength; ring++) {
+        const char = nameText[ring];
+
+        const ringData = {
+            radius: ring * 20, // Increased spacing between letters
+            speed: 0.6,
+            maxRadius: 350, // Decreased for faster fade out
+            phase: ring * 0.3,
+            letter: char,
+            sprites: []
+        };
+
+        // Create multiple copies of this one letter around the ring
+        for (let i = 0; i < particlesPerRing; i++) {
+            // Create text for all characters INCLUDING SPACE
+            const textObject = create3DTextMesh(char);
+            const angle = (i / particlesPerRing) * Math.PI * 2;
+
+            textObject.userData = {
+                angle: angle,
+                ringIndex: ring
+            };
+
+            ringData.sprites.push(textObject);
+            scene.add(textObject);
+        }
+
+        noiseTextSprites.push(ringData);
+    }
+}
+
+function updateNoiseParticles() {
+    if (!noiseAnimationActive || noiseTextSprites.length === 0) return;
+
+    for (let ringData of noiseTextSprites) {
+        // Expand ring outward slowly
+        ringData.radius += ringData.speed;
+        if (ringData.radius > ringData.maxRadius) {
+            ringData.radius = 0;
+        }
+
+        // Update phase for wave motion
+        ringData.phase += 0.03;
+
+        // Calculate fade based on distance traveled
+        const fadeProgress = ringData.radius / ringData.maxRadius;
+        const alpha = Math.max(0, 1.0 - fadeProgress);
+
+        // Update each text object in the ring
+        for (let textObject of ringData.sprites) {
+            const angle = textObject.userData.angle;
+
+            // Position in circle (moved left 21)
+            const x = Math.cos(angle) * ringData.radius - 21;
+            const z = Math.sin(angle) * ringData.radius + 10;
+
+            // Sinusoidal y-movement for wave effect (increased wavelength)
+            const waveHeight = Math.sin(ringData.radius * 0.015 + ringData.phase) * 22;
+
+            textObject.position.set(x, 80 + waveHeight, z);
+
+            // Rotate 3D text meshes to face camera (billboarding)
+            if (textObject.geometry && textObject.geometry.type !== 'SpriteGeometry') {
+                textObject.lookAt(camera.position);
+            }
+
+            // Apply fade based on distance
+            if (textObject.material) {
+                textObject.material.opacity = alpha;
+                textObject.visible = alpha > 0.01;
+            }
+        }
+    }
+}
+
+function startNoiseAnimation() {
+    if (noiseTextSprites.length === 0) {
+        createNoiseTextSystem();
+    } else {
+        // Make all sprites visible
+        for (let ringData of noiseTextSprites) {
+            for (let sprite of ringData.sprites) {
+                sprite.visible = true;
+            }
+        }
+    }
+    noiseAnimationActive = true;
+}
+
+function stopNoiseAnimation() {
+    noiseAnimationActive = false;
+    // Hide all sprites
+    for (let ringData of noiseTextSprites) {
+        for (let sprite of ringData.sprites) {
+            sprite.visible = false;
+        }
+    }
+}
+
 // Bio card functionality
 function showBioCard() {
     const bioCard = document.getElementById('bio-card');
@@ -2449,17 +2673,9 @@ function showBioCard() {
     if (simpleBio) simpleBio.style.display = 'none';
     if (noiseBtn) noiseBtn.style.display = 'none';
 
-    // Show all name boxes
-    const nameBox = document.querySelector('.name-box');
-    const bgNameBoxes = document.querySelectorAll('.bg-name-box');
-
-    nameBox.style.display = 'flex';
-    bgNameBoxes.forEach((box) => {
-        box.style.display = 'flex';
-    });
-
-    // Show bio card
+    // Show bio card and start noise particle animation
     bioCard.classList.add('visible');
+    startNoiseAnimation();
     createSpiralText();
     // HIDE ferro animation when bio is shown
     if (window.hideFerroAnimation) window.hideFerroAnimation();
@@ -2470,17 +2686,9 @@ function hideBioCard() {
     const simpleBio = document.getElementById('simple-bio');
     const noiseBtn = document.getElementById('noise-button');
 
-    // Hide bio card
+    // Hide bio card and stop noise particle animation
     bioCard.classList.remove('visible');
-
-    // Hide all name boxes
-    const nameBox = document.querySelector('.name-box');
-    const bgNameBoxes = document.querySelectorAll('.bg-name-box');
-
-    nameBox.style.display = 'none';
-    bgNameBoxes.forEach((box) => {
-        box.style.display = 'none';
-    });
+    stopNoiseAnimation();
 
     // Show simple bio text and noise button when bio card is hidden (unless in collection mode)
     if (simpleBio && !revealMode) {
@@ -2731,7 +2939,7 @@ function updateAnimation() {
             // Show project detail overlay after a brief moment
             setTimeout(() => {
                 if (currentProject) {
-                    showProjectDetail(currentProject);
+                    showProjectDetail(currentProject, currentCategory);
 
                     // Remove the vinyl
                     if (projectVinyl) {
@@ -2740,6 +2948,7 @@ function updateAnimation() {
                     }
 
                     currentProject = null;
+                    currentCategory = null;
                 }
             }, 300);
         }
@@ -3158,6 +3367,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     updateAnimation();
+    updateNoiseParticles();
     updateLabels();
     updateViewCube();
     renderer.render(scene, camera);

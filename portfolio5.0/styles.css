@@ -602,7 +602,7 @@ canvas.clickable {
     align-items: center;
     justify-content: center;
     margin: 0;
-    background-color: rgba(36, 38, 37, 0.584);
+    background-color: rgb(36, 38, 37);
     border-radius: 50%;
     pointer-events: none;
     z-index: 10;
@@ -647,9 +647,9 @@ canvas.clickable {
     position: absolute;
     top: 775px;
     left: 275px;
-    background-color: rgba(36, 38, 37, 0.584);
+    background-color: rgb(36, 38, 37);
     color: white;
-    border: 2px solid rgba(255, 255, 255, 0.642);
+    border: 10px solid rgb(194, 18, 50);
     border-radius: 0%;
     width: 180px;
     height: 90px;
@@ -668,7 +668,7 @@ canvas.clickable {
 }
 
 #bio-close:hover {
-    background: #ff000098;
+    background: rgb(194, 18, 50);
     transform: scale(1.3);
     box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
 }
@@ -784,9 +784,9 @@ canvas.clickable {
 
 .name-box {
     position: fixed;
-    top: 50%;
+    top: 15%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.85);
     z-index: -1;
     display: flex;
     flex-direction: row;
@@ -794,14 +794,14 @@ canvas.clickable {
 }
 
 .name-inner {
-    width: 50vw;
-    height: 80px;
-    line-height: 80px;
+    width: 45vw;
+    height: 65px;
+    line-height: 65px;
     font-family: 'Orbitron', sans-serif;
-    font-size: 3em;
+    font-size: 2.4em;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
@@ -867,14 +867,14 @@ canvas.clickable {
 }
 
 .bg-name-inner {
-    width: 50vw;
-    height: 80px;
-    line-height: 80px;
+    width: 45vw;
+    height: 65px;
+    line-height: 65px;
     font-family: 'Orbitron', sans-serif;
-    font-size: 3em;
+    font-size: 2.4em;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
@@ -895,160 +895,51 @@ canvas.clickable {
     padding-left: 100%;
 }
 
-/* Background box 1 */
-.bg-name-box-1 {
-    top: 10%;
-    left: 20%;
-    transform: rotate(-5deg);
+/* Concentric circles pulsing from vinyl center */
+@keyframes pulse-out {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3);
+        opacity: 0;
+    }
 }
 
-.bg-name-box-1 .bg-name-left {
-    background-color: #5d4a7f;
-    color: #2a1f3f;
-}
-
-.bg-name-box-1 .bg-name-right {
-    background-color: #87b3e8;
-    color: #f0f6ff;
-}
-
-.bg-name-box-1 .bg-name-left span {
-    animation: scroll-right 28s linear infinite;
-    animation-delay: -14s;
-}
-
-.bg-name-box-1 .bg-name-right span {
-    animation: scroll-right 28s linear infinite;
-}
-
-/* Background box 2 */
-.bg-name-box-2 {
-    top: 25%;
-    right: 15%;
-    transform: rotate(8deg);
-}
-
-.bg-name-box-2 .bg-name-left {
-    background-color: #87b3e8;
-    color: #f0f6ff;
-}
-
-.bg-name-box-2 .bg-name-right {
-    background-color: #5d4a7f;
-    color: #2a1f3f;
-}
-
-.bg-name-box-2 .bg-name-left span {
-    animation: scroll-right 13s linear infinite;
-    animation-delay: -6.5s;
-}
-
-.bg-name-box-2 .bg-name-right span {
-    animation: scroll-right 13s linear infinite;
-}
-
-/* Background box 4 */
-.bg-name-box-4 {
-    bottom: 20%;
-    left: 10%;
-    transform: rotate(-10deg);
-}
-
-.bg-name-box-4 .bg-name-left {
-    background-color: #6495ed;
-    color: #e6f0ff;
-}
-
-.bg-name-box-4 .bg-name-right {
-    background-color: #4a3875;
-    color: #1a0f2e;
-}
-
-.bg-name-box-4 .bg-name-left span {
-    animation: scroll-left 11s linear infinite;
-    animation-delay: -5.5s;
-}
-
-.bg-name-box-4 .bg-name-right span {
-    animation: scroll-left 11s linear infinite;
-}
-
-/* Background box 6 */
-.bg-name-box-6 {
-    top: 40%;
-    left: 5%;
-    transform: rotate(-8deg);
-}
-
-.bg-name-box-6 .bg-name-left {
-    background-color: #709fd8;
-    color: #eaf2ff;
-}
-
-.bg-name-box-6 .bg-name-right {
-    background-color: #523d70;
-    color: #1f1530;
-}
-
-.bg-name-box-6 .bg-name-left span {
-    animation: scroll-left 15s linear infinite;
-    animation-delay: -7.5s;
-}
-
-.bg-name-box-6 .bg-name-right span {
-    animation: scroll-left 15s linear infinite;
-}
-
-/* Background box 7 */
-.bg-name-box-7 {
-    top: 60%;
-    right: 8%;
-    transform: rotate(4deg);
-}
-
-.bg-name-box-7 .bg-name-left {
-    background-color: #5d4a7f;
-    color: #2a1f3f;
-}
-
-.bg-name-box-7 .bg-name-right {
-    background-color: #87b3e8;
-    color: #f0f6ff;
-}
-
-.bg-name-box-7 .bg-name-left span {
-    animation: scroll-right 26s linear infinite;
-    animation-delay: -13s;
-}
-
-.bg-name-box-7 .bg-name-right span {
-    animation: scroll-right 26s linear infinite;
-}
-
-/* Background box 8 */
-.bg-name-box-8 {
-    bottom: 35%;
+.pulse-circle {
+    position: fixed;
+    top: 15%;
     left: 50%;
-    transform: translateX(-50%) rotate(-4deg);
+    width: 300px;
+    height: 300px;
+    border: 2px solid #6495ed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -2;
 }
 
-.bg-name-box-8 .bg-name-left {
-    background-color: #628bc5;
-    color: #e0ecfa;
+.pulse-circle-1 {
+    animation: pulse-out 4s ease-out infinite;
+    animation-delay: 0s;
 }
 
-.bg-name-box-8 .bg-name-right {
-    background-color: #3b2d5c;
-    color: #18092e;
+.pulse-circle-2 {
+    animation: pulse-out 4s ease-out infinite;
+    animation-delay: 1s;
+    border-color: #5d4a7f;
 }
 
-.bg-name-box-8 .bg-name-left span {
-    animation: scroll-left 9s linear infinite;
-    animation-delay: -4.5s;
+.pulse-circle-3 {
+    animation: pulse-out 4s ease-out infinite;
+    animation-delay: 2s;
+    border-color: #87b3e8;
 }
 
-.bg-name-box-8 .bg-name-right span {
-    animation: scroll-left 9s linear infinite;
+.pulse-circle-4 {
+    animation: pulse-out 4s ease-out infinite;
+    animation-delay: 3s;
+    border-color: #4a3875;
 }
 
 /* ===================================
@@ -1057,8 +948,8 @@ canvas.clickable {
 
 #viewcube-container {
     position: fixed;
-    bottom: 30px;
-    right: 40px;
+    bottom: 70px;
+    right: 70px;
     width: 120px;
     height: 120px;
     perspective: 600px;
@@ -1091,7 +982,7 @@ canvas.clickable {
     font-weight: 600;
     color: #fff;
     background: rgba(0, 0, 0, 0.7);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgb(194, 18, 50);
     backdrop-filter: blur(10px);
     cursor: pointer;
     user-select: none;
