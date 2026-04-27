@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPIF 1.0 — Simplified Projector Initiated Fabrication</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav id="nav">
+        <span class="nav-logo">SPIF <span class="nav-version">1.0</span></span>
+        <ul class="nav-links">
+            <li><a href="#vision">The Vision</a></li>
+            <li><a href="#build">The Build</a></li>
+            <li><a href="#science">The Science</a></li>
+            <li><a href="references.html">References</a></li>
+            <li><a href="#follow" class="nav-cta">Follow Development</a></li>
+        </ul>
+    </nav>
+
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 1 — HERO
+         Video fades out on scroll, 3D viewer fades in.
+         3D viewer: click a component to zoom in + see description.
+    ════════════════════════════════════════════════ -->
+    <div id="hero-scroll-wrapper">
+    <section id="hero">
+        <!-- title overlaid on video -->
+        <div class="hero-header">
+            <h1 class="hero-title">
+                <span class="title-spif">SPIF</span>
+                <span class="title-version">1.0</span>
+            </h1>
+            <p class="hero-sub">Simplified Projector Initiated Fabrication</p>
+        </div>
+
+        <!-- component label bar — shown when 3D is active -->
+        <div id="component-labels"></div>
+
+        <!-- fullscreen video/3D — fills to bottom of viewport -->
+        <div class="machine-stage">
+            <video id="spif-video" autoplay muted loop playsinline>
+                <source src="models/IMG_6964.mov" type="video/quicktime">
+                <source src="models/IMG_6964.mov" type="video/mp4">
+            </video>
+            <div id="spif-3d-container"></div>
+        </div>
+    </section>
+    </div><!-- /#hero-scroll-wrapper -->
+
+    <!-- tagline + stats — appears after hero sticky zone -->
+    <div class="hero-footer-band">
+        <p class="hero-tagline">A volumetric 3D printer that fabricates in three dimensions simultaneously — no layers, no supports, no waste.</p>
+        <div class="hero-stats">
+            <div class="stat">
+                <span class="stat-val">3D</span>
+                <span class="stat-label">Simultaneous axes</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <span class="stat-val">Minutes</span>
+                <span class="stat-label">Not hours</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <span class="stat-val">Zero</span>
+                <span class="stat-label">Support structures</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <span class="stat-val">Reusable</span>
+                <span class="stat-label">Recyclable Resin</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 2 — THE VISION
+    ════════════════════════════════════════════════ -->
+    <section id="vision">
+        <div class="section-inner">
+            <div class="section-label">Chapter 01</div>
+            <h2 class="section-title">The First Volumetric Printer for Everyone</h2>
+
+            <div class="vision-statement reveal">
+                <p>Prusa democratized FDM. Bambu Labs perfected it. SPIF 1.0 is the opening move of the next era, taking volumetric fabrication out of the lab and putting it in the garage.</p>
+            </div>
+
+            <div class="vision-grid">
+                <div class="vision-card reveal">
+                    <h3>Standard Materials</h3>
+                    <p>SPIF 1.0 runs on commercially available SLA resin — no exotic photopolymers, no unique resin compositions. The resin that doesn't cure stays liquid and is fully recyclable back into the vat.</p>
+                    <div class="vision-metric">
+                        <span class="vm-val">Reusable</span>
+                        <span class="vm-label">Resin recovery</span>
+                    </div>
+                </div>
+                <div class="vision-card reveal">
+                    <h3>Speed at Scale</h3>
+                    <p>Volumetric printing encodes the entire object in a single rotation sequence. As the technology matures, print times measured in minutes — not hours — become the baseline, not the exception.</p>
+                    <div class="vision-metric">
+                        <span class="vm-val">Minutes</span>
+                        <span class="vm-label">Target print time</span>
+                    </div>
+                </div>
+                <div class="vision-card reveal">
+                    <h3>Accessible Hardware</h3>
+                    <p>The entire SPIF 1.0 prototype was researched and built for under $1,000. The goal is a consumer product at a price point that competes with today's desktop resin printers — not tomorrow's industrial machines.</p>
+                    <div class="vision-metric">
+                        <span class="vm-val">&lt; $1K</span>
+                        <span class="vm-label">Full R&D budget</span>
+                    </div>
+                </div>
+                <div class="vision-card reveal">
+                    <h3>A New Category</h3>
+                    <p>FDM, SLA, SLS — these are all variations on the same theme. SPIF introduces a fundamentally different physics. Not an iteration. A new column in the table.</p>
+                    <div class="vision-metric">
+                        <span class="vm-val">First</span>
+                        <span class="vm-label">Consumer VAM printer</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 3 — THE BUILD
+    ════════════════════════════════════════════════ -->
+    <section id="build">
+        <div class="section-inner">
+            <div class="section-label">Chapter 02</div>
+            <h2 class="section-title">The Research Behind the Machine</h2>
+
+            <div class="build-timeline reveal">
+                <h3>Development Timeline</h3>
+                <div class="bt-track">
+                    <div class="bt-item">
+                        <div class="bt-dot"></div>
+                        <div class="bt-label">Months 1–2</div>
+                        <div class="bt-desc">Literature review, axial lithography fundamentals, resin chemistry, optical system design</div>
+                    </div>
+                    <div class="bt-item">
+                        <div class="bt-dot"></div>
+                        <div class="bt-label">Weeks 1–3</div>
+                        <div class="bt-desc">Custom projections: Grasshopper-based, contour cross-section groups, JSON export, Python video output</div>
+                    </div>
+                    <div class="bt-item">
+                        <div class="bt-dot"></div>
+                        <div class="bt-label">Weeks 4–6</div>
+                        <div class="bt-desc">Hardware assembly, projector calibration, rotation platform integration, OpenCAL Mac integration</div>
+                    </div>
+                    <div class="bt-item">
+                        <div class="bt-dot"></div>
+                        <div class="bt-label">Weeks 7–9</div>
+                        <div class="bt-desc">First print attempts, resin parameter testing, intensity calibration, test feedback loop</div>
+                    </div>
+                    <div class="bt-item">
+                        <div class="bt-dot active"></div>
+                        <div class="bt-label">Weeks 10–11 →</div>
+                        <div class="bt-desc">Consistent prototype generation, fidelity improvements, theory & development for next iteration</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="discoveries">
+                <h3 class="discoveries-title">Key Discoveries</h3>
+                <div class="discovery-list">
+                    <div class="discovery reveal">
+                        <div class="d-marker"></div>
+                        <div class="d-content">
+                            <h4>First Known Mac Integration of OpenCAL</h4>
+                            <p>OpenCAL is the open-source projection control software at the heart of axial lithography workflows. All prior implementations ran on Windows or Linux. SPIF 1.0 achieved the first documented macOS integration.</p>
+                        </div>
+                    </div>
+                    <div class="discovery reveal">
+                        <div class="d-marker"></div>
+                        <div class="d-content">
+                            <h4>Standard SLA Resin Viability</h4>
+                            <p>Prior volumetric research uses custom-formulated resins with tightly controlled photoinitiator concentrations. SPIF 1.0 demonstrates that off-the-shelf desktop SLA resin can be adapted to axial lithography, removing a major barrier to accessible volumetric fabrication.</p>
+                        </div>
+                    </div>
+                    <div class="discovery reveal">
+                        <div class="d-marker"></div>
+                        <div class="d-content">
+                            <h4>Sub-$1,000 Full-Stack R&D</h4>
+                            <p>Projection hardware, rotation platform, and custom software systems; the complete SPIF 1.0 development cycle ran under $1,000, with a final bill-of-materials around $200. This sets a concrete cost floor for entry-level volumetric fabrication, and anchors a viable consumer pricing target.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 4 — THE SCIENCE
+    ════════════════════════════════════════════════ -->
+    <section id="science">
+        <div class="section-inner">
+            <div class="section-label">Chapter 03</div>
+            <h2 class="section-title">How Light Builds in Three Dimensions</h2>
+
+            <div class="science-intro reveal">
+                <p>Traditional resin printing cures one thin slice at a time, stacking them like pages in a book. Axial lithography throws out the book entirely.</p>
+            </div>
+
+            <div class="science-cards">
+
+                <div class="science-card reveal">
+                    <div class="sc-number">01</div>
+                    <div class="sc-icon">
+                        <svg viewBox="0 0 60 60" fill="none">
+                            <circle cx="30" cy="30" r="12" stroke="currentColor" stroke-width="1.5"/>
+                            <line x1="30" y1="4" x2="30" y2="56" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+                            <line x1="4" y1="30" x2="56" y2="30" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+                            <path d="M10 10 L50 50" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+                            <path d="M50 10 L10 50" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        </svg>
+                    </div>
+                    <h3>The Rotation Stage</h3>
+                    <p>A cylindrical container of photo-curable resin rotates continuously from a motorized arm. Unlike standard printing, the resin isn't waiting to be sliced, rather, it works with the projection to build in three dimensions.</p>
+                </div>
+
+                <div class="science-card reveal">
+                    <div class="sc-number">02</div>
+                    <div class="sc-icon">
+                        <svg viewBox="0 0 60 60" fill="none">
+                            <rect x="4" y="20" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M20 30 L40 30" stroke="currentColor" stroke-width="2"/>
+                            <path d="M34 24 L40 30 L34 36" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="48" cy="30" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <circle cx="48" cy="30" r="2" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <h3>Voxel-based Projections</h3>
+                    <p>A projector fires carefully computed 2D images, synchronized to the rotation angle of the vat. In essence, a reverse CT scan, each frame projects the correct light-depth map of the desired model at that respective angle.</p>
+                </div>
+
+                <div class="science-card reveal">
+                    <div class="sc-number">03</div>
+                    <div class="sc-icon">
+                        <svg viewBox="0 0 60 60" fill="none">
+                            <path d="M30 8 C30 8 44 20 44 32 C44 39.7 37.7 46 30 46 C22.3 46 16 39.7 16 32 C16 20 30 8 30 8Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M22 34 C22 34 26 30 30 34 C34 38 38 34 38 34" stroke="currentColor" stroke-width="1.5"/>
+                            <circle cx="30" cy="52" r="3" stroke="currentColor" stroke-width="1.5"/>
+                            <line x1="30" y1="46" x2="30" y2="49" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <h3>Cumulative Exposure</h3>
+                    <p>As the vat rotates through a full revolution, each point in the resin accumulates light dose from multiple angles. Where the total exposure exceeds the cure threshold, the resin can solidify.</p>
+                </div>
+
+                <div class="science-card reveal">
+                    <div class="sc-number">04</div>
+                    <div class="sc-icon">
+                        <svg viewBox="0 0 60 60" fill="none">
+                            <path d="M15 45 L30 15 L45 45" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M21 35 L39 35" stroke="currentColor" stroke-width="1.5"/>
+                            <circle cx="30" cy="15" r="4" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 50 L50 50" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <h3>No Supports. No Layers.</h3>
+                    <p>Due to the geometry curing quickly, in a viscous medium, and because of the projections, it can cure all at once, in place, and without supports, almost appearing from nowhere, just floating in the resin. </p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 5 — CURRENT STATE
+    ════════════════════════════════════════════════ -->
+    <section id="state">
+        <div class="section-inner">
+            <div class="section-label">Chapter 04</div>
+            <h2 class="section-title">Where SPIF 1.0 Stands Today</h2>
+
+            <div class="state-honest reveal">
+                <p class="pull-quote">Science is not a destination. It's a series of increasingly precise approximations.</p>
+            </div>
+
+            <div class="state-grid">
+                <div class="state-card state-proven reveal">
+                    <div class="sc-tag">Proven</div>
+                    <h4>Volumetric Curing Achieved</h4>
+                    <p>SPIF 1.0 is a functioning volumetric 3D printer,readily and consistently producing objects. The fundamental principle — light accumulation curing a 3D volume — works. Every run produces an object.</p>
+                </div>
+                <div class="state-card state-active reveal">
+                    <div class="sc-tag">Active R&D</div>
+                    <h4>Fidelity Under Development</h4>
+                    <p>Current prints produce what we call "blobified geometries" from static, geometric projections. These are objects with the correct volumetric character, though they do not yet have the sharp boundaries of the target model. This is a result of known factors and optimization points: projection & index-match optimization, synchronization tolerance, and rotation precision. Each is addressable.</p>
+                </div>
+                <div class="state-card state-next reveal">
+                    <div class="sc-tag">Next</div>
+                    <h4>Theories in Progress</h4>
+                    <p>Active variables being explored: temperature, intenstiy, viscosity, componentry.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 6 — FOLLOW
+    ════════════════════════════════════════════════ -->
+    <section id="follow">
+        <div class="section-inner follow-inner">
+            <div class="section-label">Stay In It</div>
+            <h2 class="section-title">Follow the Development</h2>
+            <p class="follow-sub">SPIF 1.0 is evolving. Follow along as the research advances, fidelity improves, and the path to a consumer product takes shape.</p>
+            <div class="follow-links">
+                <a href="https://github.com/SbbarB" class="follow-btn" target="_blank">GitHub</a>
+                <a href="https://brettrabbiner.com" class="follow-btn follow-btn-outline" target="_blank">Portfolio</a>
+                <a href="references.html" class="follow-btn follow-btn-outline">References</a>
+            </div>
+            <div class="follow-credit">
+                <p>Researched, Developed, Designed, and Built by Brett Rabbiner &nbsp;·&nbsp; SPIF 1.0 &nbsp;·&nbsp; November 2025 - Present</p>
+            </div>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "three/addons/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+        }
+    }
+    </script>
+    <script type="module" src="spif-3d.js"></script>
+</body>
+</html>
